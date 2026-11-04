@@ -45,6 +45,10 @@ const api: MjolnirApi = {
     remove: (repoId, path, force) => ipcRenderer.invoke('worktrees:remove', repoId, path, force),
     changedFiles: (repoId, path) => ipcRenderer.invoke('worktrees:changedFiles', repoId, path),
   },
+  diff: {
+    compare: (repoId, path, mode) => ipcRenderer.invoke('diff:compare', repoId, path, mode),
+    file: (repoId, path, from, change) => ipcRenderer.invoke('diff:file', repoId, path, from, change),
+  },
   pty: {
     spawn: (request) => ipcRenderer.invoke('pty:spawn', request),
     write: (id, data) => ipcRenderer.send('pty:write', id, data),

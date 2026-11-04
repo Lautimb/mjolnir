@@ -5,7 +5,7 @@ import type { Session } from './model'
 
 const POLL_MS = 5000
 
-export function StatusBar({ session }: { session: Session }) {
+export function StatusBar({ session, onOpenDiff }: { session: Session; onOpenDiff(): void }) {
   const [changes, setChanges] = useState<number | null>(null)
   const { repo, worktree } = session
   const repoId = repo?.id
@@ -41,10 +41,10 @@ export function StatusBar({ session }: { session: Session }) {
         </span>
       )}
       {changes !== null && (
-        <span className="status-item">
+        <button className="status-item status-link" title="Ver diff" onClick={onOpenDiff}>
           <FileDiff size={12} />
           {changes === 0 ? 'Sin cambios' : `${changes} ${changes === 1 ? 'archivo cambiado' : 'archivos cambiados'}`}
-        </span>
+        </button>
       )}
       <span className="status-spacer" />
       {repo && <span className="status-item">{repo.name}</span>}
