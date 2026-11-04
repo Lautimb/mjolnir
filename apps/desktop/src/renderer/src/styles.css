@@ -211,6 +211,25 @@ button:disabled {
   right: -6px;
 }
 
+.rail-badge {
+  position: absolute;
+  top: 3px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--color-surface);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
 .rail-button:disabled {
   opacity: 0.45;
 }

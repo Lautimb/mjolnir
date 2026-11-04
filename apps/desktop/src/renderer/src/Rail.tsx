@@ -3,7 +3,15 @@ import { useI18n } from './i18n/I18nProvider'
 
 export type View = 'sessions' | 'diff' | 'settings'
 
-export function Rail({ view, onChange }: { view: View; onChange(view: View): void }) {
+const MAX_BADGE = 99
+
+interface Props {
+  view: View
+  changes: number | null
+  onChange(view: View): void
+}
+
+export function Rail({ view, changes, onChange }: Props) {
   const { t } = useI18n()
   return (
     <nav className="rail" aria-label={t('rail.label')}>
@@ -16,10 +24,15 @@ export function Rail({ view, onChange }: { view: View; onChange(view: View): voi
       </button>
       <button
         className={`rail-button${view === 'diff' ? ' active' : ''}`}
-        title={t('rail.diff')}
+        title={changes ? `${t('rail.diff')} · ${t('statusBar.changedFiles', { count: changes })}` : t('rail.diff')}
         onClick={() => onChange(view === 'diff' ? 'sessions' : 'diff')}
       >
         <GitCompare size={18} />
+        {!!changes && (
+          <span className="rail-badge" aria-label={t('statusBar.changedFiles', { count: changes })}>
+            {changes > MAX_BADGE ? `${MAX_BADGE}+` : changes}
+          </span>
+        )}
       </button>
       <button className="rail-button" title={t('common.soon', { feature: t('rail.pullRequests') })} disabled>
         <GitPullRequest size={18} />

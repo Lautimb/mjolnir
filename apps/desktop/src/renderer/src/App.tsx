@@ -11,6 +11,7 @@ import { TabBar } from './TabBar'
 import { TerminalView } from './TerminalView'
 import { TitleBar } from './TitleBar'
 import { describeError, useI18n } from './i18n/I18nProvider'
+import { useChangedFiles } from './useChangedFiles'
 import type { UpdateSettings } from './useSettings'
 import { useWorkspace } from './useWorkspace'
 import type { Settings } from '../../shared/settings'
@@ -67,6 +68,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   }, [repos, worktrees, t])
 
   const session = sessions.get(activeKey) ?? sessions.get(SCRATCH_KEY)!
+  const changes = useChangedFiles(session)
   const sessionProfiles =
     session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
   const sessionTabs = tabs.filter((tab) => tab.sessionKey === session.key)
@@ -141,7 +143,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   return (
     <div className={`app panel-${settings.panelPosition} view-${view}`}>
       <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} />
-      <Rail view={view} onChange={setView} />
+      <Rail view={view} changes={changes} onChange={setView} />
       {view === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
       <Sidebar
         repos={repos}
@@ -198,7 +200,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
           />
         </Suspense>
       )}
-      <StatusBar session={session} onOpenDiff={() => setView('diff')} />
+      <StatusBar session={session} changes={changes} onOpenDiff={() => setView('diff')} />
       {addingRepo && <AddRepoDialog existing={repos} onAdd={addRepo} onClose={() => setAddingRepo(false)} />}
       {notice && (
         <div className="toast" role="alert">

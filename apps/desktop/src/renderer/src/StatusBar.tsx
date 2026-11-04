@@ -1,33 +1,16 @@
-import { useEffect, useState } from 'react'
 import { FileDiff, GitBranch, Server } from 'lucide-react'
 import { hostLabel, useI18n } from './i18n/I18nProvider'
 import type { Session } from './model'
 
-const POLL_MS = 5000
+interface Props {
+  session: Session
+  changes: number | null
+  onOpenDiff(): void
+}
 
-export function StatusBar({ session, onOpenDiff }: { session: Session; onOpenDiff(): void }) {
+export function StatusBar({ session, changes, onOpenDiff }: Props) {
   const { t } = useI18n()
-  const [changes, setChanges] = useState<number | null>(null)
   const { repo, worktree } = session
-  const repoId = repo?.id
-  const path = worktree?.path
-
-  useEffect(() => {
-    setChanges(null)
-    if (!repoId || !path) return
-    let cancelled = false
-    const poll = () =>
-      window.mjolnir.worktrees.changedFiles(repoId, path).then(
-        (count) => !cancelled && setChanges(count),
-        () => !cancelled && setChanges(null),
-      )
-    void poll()
-    const timer = setInterval(poll, POLL_MS)
-    return () => {
-      cancelled = true
-      clearInterval(timer)
-    }
-  }, [repoId, path])
 
   return (
     <footer className="statusbar">
