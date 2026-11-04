@@ -1,7 +1,10 @@
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 const bundleWorkspace = { exclude: ['@mjolnir/core'] }
+const monacoVs = path.resolve(path.dirname(createRequire(import.meta.url).resolve('monaco-editor/editor/editor.api.js')), '..')
 
 export default defineConfig({
   main: {
@@ -12,5 +15,10 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
+    resolve: {
+      alias: {
+        'monaco-editor-codicons.css': path.join(monacoVs, 'base/browser/ui/codicons/codicon/codicon.css'),
+      },
+    },
   },
 })

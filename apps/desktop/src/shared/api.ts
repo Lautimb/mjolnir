@@ -1,4 +1,4 @@
-import type { BranchList, DiscoveredRepos, Host, Repo, TerminalProfile, Worktree } from '@mjolnir/core/browser'
+import type { BranchList, CompareMode, DiscoveredRepos, FileChange, Host, Repo, TerminalProfile, Worktree } from '@mjolnir/core/browser'
 import type { Settings } from './settings'
 
 export interface SpawnRequest {
@@ -9,6 +9,15 @@ export interface SpawnRequest {
   cwd?: string
   initialInput?: string
 }
+
+export interface SessionDiff {
+  mode: CompareMode
+  base: string | null
+  from: string
+  files: FileChange[]
+}
+
+export type DiffFile = { kind: 'text'; original: string; modified: string } | { kind: 'binary' } | { kind: 'too-large' }
 
 export interface MjolnirApi {
   platform: NodeJS.Platform
@@ -42,6 +51,10 @@ export interface MjolnirApi {
     create(repoId: string, branch: string, base: string): Promise<Worktree>
     remove(repoId: string, path: string, force: boolean): Promise<void>
     changedFiles(repoId: string, path: string): Promise<number>
+  }
+  diff: {
+    compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff>
+    file(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile>
   }
   pty: {
     spawn(request: SpawnRequest): Promise<void>

@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
 interface StoreData {
   repos: Repo[]
   settings: Settings
+  sessionBases: Record<string, string>
 }
 
 export class Store {
@@ -29,6 +30,16 @@ export class Store {
     this.save()
   }
 
+  sessionBase(key: string): string | null {
+    return this.data.sessionBases[key] ?? null
+  }
+
+  setSessionBase(key: string, base: string | null): void {
+    const { [key]: _, ...rest } = this.data.sessionBases
+    this.data.sessionBases = base ? { ...rest, [key]: base } : rest
+    this.save()
+  }
+
   settings(): Settings {
     return this.data.settings
   }
@@ -42,9 +53,13 @@ export class Store {
   private load(): StoreData {
     try {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<StoreData>
-      return { repos: parsed.repos ?? [], settings: { ...DEFAULT_SETTINGS, ...parsed.settings } }
+      return {
+        repos: parsed.repos ?? [],
+        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+        sessionBases: parsed.sessionBases ?? {},
+      }
     } catch {
-      return { repos: [], settings: DEFAULT_SETTINGS }
+      return { repos: [], settings: DEFAULT_SETTINGS, sessionBases: {} }
     }
   }
 

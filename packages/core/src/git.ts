@@ -43,6 +43,7 @@ export function createGit(exec: Exec, paths: PathApi) {
   const git = (cwd: string, ...args: string[]) => exec(cwd, 'git', args)
   const lines = (output: string) => output.split(/\r?\n/).filter(Boolean)
   const normalize = (p: string) => paths.normalize(p)
+  const orNull = (out: Promise<string>) => out.then((value) => value.trim() || null, () => null)
 
   return {
     async toplevel(dir: string): Promise<string> {
@@ -56,12 +57,15 @@ export function createGit(exec: Exec, paths: PathApi) {
       }))
     },
 
+    async defaultBase(repo: string): Promise<string | null> {
+      return orNull(git(repo, 'symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'))
+    },
+
     async branches(repo: string): Promise<BranchList> {
-      const orNull = (out: Promise<string>) => out.then((value) => value.trim() || null, () => null)
       const [output, email, defaultBase] = await Promise.all([
         git(repo, 'for-each-ref', '--sort=-committerdate', `--format=${BRANCH_FORMAT}`, 'refs/heads', 'refs/remotes'),
         orNull(git(repo, 'config', 'user.email')),
-        orNull(git(repo, 'symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')),
+        this.defaultBase(repo),
       ])
       return { refs: parseBranchRefs(output, email), defaultBase }
     },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { AddRepoDialog } from './AddRepoDialog'
 import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
@@ -23,6 +23,8 @@ import {
 } from './model'
 
 const NOTICE_MS = 8000
+
+const DiffView = lazy(() => import('./DiffView').then((module) => ({ default: module.DiffView })))
 
 export function App() {
   const workspace = useWorkspace()
@@ -145,7 +147,7 @@ export function App() {
         activeKey={session.key}
         onSelect={(key) => {
           setActiveKey(key)
-          setView('sessions')
+          setView((current) => (current === 'settings' ? 'sessions' : current))
         }}
         onAddRepo={() => setAddingRepo(true)}
         onRemoveRepo={removeRepo}
@@ -183,7 +185,16 @@ export function App() {
           )}
         </div>
       </section>
-      <StatusBar session={session} />
+      {view === 'diff' && (
+        <Suspense fallback={<section className="diff-view" />}>
+          <DiffView
+            session={session}
+            sideBySide={settings.diffSideBySide}
+            onSideBySideChange={(diffSideBySide) => updateSettings({ diffSideBySide })}
+          />
+        </Suspense>
+      )}
+      <StatusBar session={session} onOpenDiff={() => setView('diff')} />
       {addingRepo && <AddRepoDialog existing={repos} onAdd={addRepo} onClose={() => setAddingRepo(false)} />}
       {notice && (
         <div className="toast" role="alert">

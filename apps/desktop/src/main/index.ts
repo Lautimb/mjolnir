@@ -8,6 +8,8 @@ import {
   resolveLocation,
   spawnCommand,
   toNativePath,
+  type CompareMode,
+  type FileChange,
   type Host,
 } from '@mjolnir/core'
 import icon from '../../resources/icon.png?asset'
@@ -122,6 +124,13 @@ function registerIpc(workspace: Workspace, store: Store): void {
   )
   ipcMain.handle('worktrees:changedFiles', (_event, repoId: string, path: string) =>
     workspace.changedFiles(repoId, path),
+  )
+
+  ipcMain.handle('diff:compare', (_event, repoId: string, path: string, mode: CompareMode) =>
+    workspace.compare(repoId, path, mode),
+  )
+  ipcMain.handle('diff:file', (_event, repoId: string, path: string, from: string, change: FileChange) =>
+    workspace.diffFile(repoId, path, from, change),
   )
 
   ipcMain.handle('pty:spawn', (_event, { id, profileId, cols, rows, cwd, initialInput }: SpawnRequest) => {

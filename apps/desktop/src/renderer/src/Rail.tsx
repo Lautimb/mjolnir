@@ -1,6 +1,6 @@
 import { GitCompare, GitPullRequest, Layers, Puzzle, Settings } from 'lucide-react'
 
-export type View = 'sessions' | 'settings'
+export type View = 'sessions' | 'diff' | 'settings'
 
 const SOON = 'Próximamente'
 
@@ -14,7 +14,11 @@ export function Rail({ view, onChange }: { view: View; onChange(view: View): voi
       >
         <Layers size={18} />
       </button>
-      <button className="rail-button" title={`Diff · ${SOON}`} disabled>
+      <button
+        className={`rail-button${view === 'diff' ? ' active' : ''}`}
+        title="Diff"
+        onClick={() => onChange(view === 'diff' ? 'sessions' : 'diff')}
+      >
         <GitCompare size={18} />
       </button>
       <button className="rail-button" title={`Pull requests · ${SOON}`} disabled>
