@@ -1,7 +1,7 @@
 import { GitCompare, GitPullRequest, Layers, Puzzle, Settings } from 'lucide-react'
 import { useI18n } from './i18n/I18nProvider'
 
-export type View = 'sessions' | 'diff' | 'settings'
+export type View = 'sessions' | 'diff' | 'pulls' | 'settings'
 
 const MAX_BADGE = 99
 
@@ -34,7 +34,11 @@ export function Rail({ view, changes, onChange }: Props) {
           </span>
         )}
       </button>
-      <button className="rail-button" title={t('common.soon', { feature: t('rail.pullRequests') })} disabled>
+      <button
+        className={`rail-button${view === 'pulls' ? ' active' : ''}`}
+        title={t('rail.pullRequests')}
+        onClick={() => onChange(view === 'pulls' ? 'sessions' : 'pulls')}
+      >
         <GitPullRequest size={18} />
       </button>
       <button className="rail-button" title={t('common.soon', { feature: t('rail.plugins') })} disabled>

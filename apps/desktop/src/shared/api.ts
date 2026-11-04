@@ -1,4 +1,21 @@
-import type { BranchList, CompareMode, DiscoveredRepos, FileChange, Host, Repo, TerminalProfile, Worktree } from '@mjolnir/core/browser'
+import type {
+  Account,
+  BranchList,
+  CompareMode,
+  CreatePullRequestInput,
+  DeviceCode,
+  DiscoveredRepos,
+  FileChange,
+  Host,
+  PullRequestComment,
+  PullRequestDetail,
+  PullRequestFilter,
+  PullRequestSummary,
+  RemoteRepo,
+  Repo,
+  TerminalProfile,
+  Worktree,
+} from '@mjolnir/core/browser'
 import type { Settings } from './settings'
 
 export interface SpawnRequest {
@@ -18,6 +35,28 @@ export interface SessionDiff {
 }
 
 export type DiffFile = { kind: 'text'; original: string; modified: string } | { kind: 'binary' } | { kind: 'too-large' }
+
+export type AuthMethod = 'cli' | 'device' | 'token'
+
+export interface ProviderInfo {
+  id: string
+  displayName: string
+  cli: string | null
+  methods: AuthMethod[]
+}
+
+export interface PullRequestContext {
+  remote: RemoteRepo | null
+  provider: ProviderInfo | null
+  account: Account | null
+  defaultBranch: string | null
+}
+
+export interface PullRequestDiff {
+  from: string
+  to: string
+  files: FileChange[]
+}
 
 export interface MjolnirApi {
   platform: NodeJS.Platform
@@ -51,6 +90,27 @@ export interface MjolnirApi {
     create(repoId: string, branch: string, base: string): Promise<Worktree>
     remove(repoId: string, path: string, force: boolean): Promise<void>
     changedFiles(repoId: string, path: string): Promise<number>
+  }
+  accounts: {
+    providers(): Promise<ProviderInfo[]>
+    list(): Promise<Account[]>
+    connectCli(provider: string): Promise<Account>
+    connectToken(provider: string, token: string): Promise<Account>
+    startDeviceFlow(provider: string): Promise<DeviceCode>
+    finishDeviceFlow(provider: string): Promise<Account>
+    cancelDeviceFlow(provider: string): void
+    disconnect(provider: string, host: string): Promise<void>
+  }
+  pulls: {
+    context(repoId: string): Promise<PullRequestContext>
+    list(repoId: string, filter: PullRequestFilter): Promise<PullRequestSummary[]>
+    get(repoId: string, number: number): Promise<PullRequestDetail>
+    forBranch(repoId: string, branch: string): Promise<PullRequestSummary | null>
+    comments(repoId: string, number: number): Promise<PullRequestComment[]>
+    comment(repoId: string, number: number, body: string): Promise<PullRequestComment>
+    create(repoId: string, worktreePath: string, input: CreatePullRequestInput): Promise<PullRequestSummary>
+    diff(repoId: string, number: number, base: string): Promise<PullRequestDiff>
+    diffFile(repoId: string, from: string, to: string, change: FileChange): Promise<DiffFile>
   }
   diff: {
     compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff>

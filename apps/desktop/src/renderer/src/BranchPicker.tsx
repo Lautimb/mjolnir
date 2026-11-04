@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { ChevronDown, GitBranch, Globe, RefreshCw, Search } from 'lucide-react'
 import { groupBranches, type BranchList, type BranchRef } from '@mjolnir/core/browser'
 import { useI18n } from './i18n/I18nProvider'
+import { useRelativeTime } from './i18n/useRelativeTime'
 
 interface Props {
   list: BranchList | null
@@ -13,25 +14,10 @@ interface Props {
 
 const POPOVER_WIDTH = 380
 const POPOVER_HEIGHT = 400
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 31536000],
-  ['month', 2592000],
-  ['week', 604800],
-  ['day', 86400],
-  ['hour', 3600],
-  ['minute', 60],
-]
-
-function ago(relative: Intl.RelativeTimeFormat, seconds: number): string {
-  if (!seconds) return ''
-  const diff = seconds - Date.now() / 1000
-  const [unit, size] = UNITS.find(([, size]) => Math.abs(diff) >= size) ?? ['minute', 60]
-  return relative.format(Math.round(diff / size), unit)
-}
 
 export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: Props) {
-  const { t, locale } = useI18n()
-  const relative = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }), [locale])
+  const { t } = useI18n()
+  const ago = useRelativeTime()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -137,7 +123,7 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
                       <Icon size={13} />
                       <span className="branch-item-name">{ref.name}</span>
                       {ref.name === list?.defaultBase && <span className="branch-item-badge">{t('branchPicker.default')}</span>}
-                      <span className="branch-item-date">{ago(relative, ref.updatedAt)}</span>
+                      <span className="branch-item-date">{ago(ref.updatedAt * 1000)}</span>
                     </button>
                   )
                 })}

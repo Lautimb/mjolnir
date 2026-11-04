@@ -27,6 +27,7 @@ import {
 const NOTICE_MS = 8000
 
 const DiffView = lazy(() => import('./DiffView').then((module) => ({ default: module.DiffView })))
+const PullsView = lazy(() => import('./pulls/PullsView').then((module) => ({ default: module.PullsView })))
 
 interface Props {
   settings: Settings
@@ -198,6 +199,11 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
             sideBySide={settings.diffSideBySide}
             onSideBySideChange={(diffSideBySide) => updateSettings({ diffSideBySide })}
           />
+        </Suspense>
+      )}
+      {view === 'pulls' && (
+        <Suspense fallback={<section className="pulls-view" />}>
+          <PullsView session={session} sideBySide={settings.diffSideBySide} onOpenSettings={() => setView('settings')} />
         </Suspense>
       )}
       <StatusBar session={session} changes={changes} onOpenDiff={() => setView('diff')} />

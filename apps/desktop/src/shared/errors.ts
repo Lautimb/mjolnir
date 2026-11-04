@@ -1,7 +1,18 @@
+type NoParams = Record<never, never>
+
 export interface AppErrorParams {
   unknownRepo: { id: string }
   unknownProfile: { id: string }
   worktreeMissing: { path: string }
+  unsupportedRemote: NoParams
+  noAccount: { provider: string }
+  providerUnauthorized: { provider: string }
+  providerRequestFailed: { status: number; message: string }
+  secureStorageUnavailable: NoParams
+  cliNotFound: { cli: string }
+  deviceFlowUnavailable: NoParams
+  deviceFlowDenied: NoParams
+  deviceFlowExpired: NoParams
 }
 
 export type AppErrorCode = keyof AppErrorParams

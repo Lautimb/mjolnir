@@ -154,3 +154,25 @@ describe('createGit with a remote', () => {
     expect(run(target, 'rev-parse', '--abbrev-ref', '@{upstream}')).toBe('origin/master')
   })
 })
+
+describe('createGit publishing', () => {
+  it('reports whether a branch has an upstream and how many commits it has not pushed', async () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'mjolnir-publish-')))
+    const run = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
+    const commit = (cwd: string, message: string) => run(cwd, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', message)
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', path.join(root, 'origin.git')])
+    execFileSync('git', ['clone', '-q', path.join(root, 'origin.git'), path.join(root, 'clone')], { stdio: 'ignore' })
+    const clone = path.join(root, 'clone')
+    const git = createGit(createHostExec({ kind: 'posix' }), path.posix)
+
+    commit(clone, 'init')
+    run(clone, 'switch', '-q', '-c', 'feat/x')
+    expect(await git.publishState(clone)).toEqual({ upstream: null, ahead: 0 })
+
+    await git.push(clone, 'feat/x')
+    commit(clone, 'more')
+    expect(await git.publishState(clone)).toEqual({ upstream: 'origin/feat/x', ahead: 1 })
+    expect(await git.remoteUrl(clone)).toBe(path.join(root, 'origin.git'))
+    rmSync(root, { recursive: true, force: true })
+  })
+})

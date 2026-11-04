@@ -95,3 +95,26 @@ describe('createDiff against a real repository', () => {
     expect((await diff.files(fresh, EMPTY_TREE)).map((file) => file.status)).toEqual(['untracked'])
   })
 })
+
+describe('createDiff between two refs', () => {
+  it('compares commits without looking at the working tree, reading both sides from git', async () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'mjolnir-refdiff-')))
+    const run = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
+    run('init', '-q', '-b', 'main')
+    writeFileSync(path.join(root, 'a.ts'), 'one\n')
+    run('add', '-A')
+    run('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'base')
+    run('switch', '-q', '-c', 'feature')
+    writeFileSync(path.join(root, 'a.ts'), 'two\n')
+    run('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-am', 'change')
+    writeFileSync(path.join(root, 'a.ts'), 'uncommitted\n')
+    writeFileSync(path.join(root, 'scratch.md'), 'untracked\n')
+
+    const diff = createDiff(createHostExec({ kind: 'posix' }))
+    const files = await diff.files(root, 'main', 'feature')
+    expect(files).toEqual([{ path: 'a.ts', status: 'modified', additions: 1, deletions: 1, binary: false }])
+    expect(await diff.original(root, 'main', files[0]!)).toBe('one\n')
+    expect(await diff.modified(root, 'feature', files[0]!)).toBe('two\n')
+    rmSync(root, { recursive: true, force: true })
+  })
+})
