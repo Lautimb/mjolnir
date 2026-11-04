@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Sparkles, SquareTerminal, X } from 'lucide-react'
 import type { TerminalProfile } from '@mjolnir/core/browser'
+import { useI18n } from './i18n/I18nProvider'
 import { AGENTS, type Agent, type Tab } from './model'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenShell, onOpenAgent }: Props) {
+  const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -61,7 +63,7 @@ export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenSh
               <span className="tab-label">{tab.label}</span>
               <button
                 className="icon-button"
-                aria-label="Cerrar"
+                aria-label={t('common.close')}
                 onClick={(event) => {
                   event.stopPropagation()
                   onClose(tab.id)
@@ -74,12 +76,12 @@ export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenSh
         })}
       </div>
       <div className="new-tab" ref={menuRef}>
-        <button className="icon-button" aria-label="Nueva pestaña" onClick={() => setMenuOpen((open) => !open)}>
+        <button className="icon-button" aria-label={t('tabs.newTab')} onClick={() => setMenuOpen((open) => !open)}>
           <Plus size={16} />
         </button>
         {menuOpen && (
           <div className="menu" role="menu">
-            <div className="menu-section">Agentes</div>
+            <div className="menu-section">{t('tabs.agents')}</div>
             {AGENTS.map((agent) => (
               <button key={agent.id} className="menu-item" role="menuitem" onClick={pick(() => onOpenAgent(agent))}>
                 <Sparkles size={14} />
@@ -87,7 +89,7 @@ export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenSh
               </button>
             ))}
             <div className="menu-divider" />
-            <div className="menu-section">Terminales</div>
+            <div className="menu-section">{t('tabs.terminals')}</div>
             {profiles.map((profile) => (
               <button
                 key={profile.id}

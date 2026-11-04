@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { ChevronDown, GitBranch, Globe, RefreshCw, Search } from 'lucide-react'
-import { groupBranches, type BranchGroupId, type BranchList, type BranchRef } from '@mjolnir/core/browser'
+import { groupBranches, type BranchList, type BranchRef } from '@mjolnir/core/browser'
+import { useI18n } from './i18n/I18nProvider'
 
 interface Props {
   list: BranchList | null
@@ -10,33 +11,27 @@ interface Props {
   onRefresh(): void
 }
 
-const GROUP_LABELS: Record<BranchGroupId, string> = {
-  principal: 'Principales',
-  local: 'Locales',
-  mine: 'Tuyas en el remoto',
-  others: 'De otros',
-}
-
 const POPOVER_WIDTH = 380
 const POPOVER_HEIGHT = 400
-const relative = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 31536000],
+  ['month', 2592000],
+  ['week', 604800],
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60],
+]
 
-function ago(seconds: number): string {
+function ago(relative: Intl.RelativeTimeFormat, seconds: number): string {
   if (!seconds) return ''
   const diff = seconds - Date.now() / 1000
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [
-    ['year', 31536000],
-    ['month', 2592000],
-    ['week', 604800],
-    ['day', 86400],
-    ['hour', 3600],
-    ['minute', 60],
-  ]
-  const [unit, size] = units.find(([, size]) => Math.abs(diff) >= size) ?? ['minute', 60]
+  const [unit, size] = UNITS.find(([, size]) => Math.abs(diff) >= size) ?? ['minute', 60]
   return relative.format(Math.round(diff / size), unit)
 }
 
 export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: Props) {
+  const { t, locale } = useI18n()
+  const relative = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }), [locale])
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -106,7 +101,7 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
             <Search size={14} />
             <input
               autoFocus
-              placeholder="Buscar rama…"
+              placeholder={t('branchPicker.search')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               spellCheck={false}
@@ -114,7 +109,7 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
             <button
               type="button"
               className="icon-button"
-              title="Traer ramas del remoto (git fetch)"
+              title={t('branchPicker.fetch')}
               disabled={refreshing}
               onClick={onRefresh}
             >
@@ -122,11 +117,11 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
             </button>
           </div>
           <div className="branch-list">
-            {!list && <div className="dialog-hint">Cargando ramas…</div>}
-            {list && flat.length === 0 && <div className="dialog-hint">Ninguna rama coincide.</div>}
+            {!list && <div className="dialog-hint">{t('branchPicker.loading')}</div>}
+            {list && flat.length === 0 && <div className="dialog-hint">{t('branchPicker.noMatch')}</div>}
             {groups.map((group) => (
-              <div key={group.id} role="group" aria-label={GROUP_LABELS[group.id]}>
-                <div className="menu-section">{GROUP_LABELS[group.id]}</div>
+              <div key={group.id} role="group" aria-label={t(`branchPicker.groups.${group.id}`)}>
+                <div className="menu-section">{t(`branchPicker.groups.${group.id}`)}</div>
                 {group.refs.map((ref) => {
                   index += 1
                   const current = index
@@ -141,8 +136,8 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
                     >
                       <Icon size={13} />
                       <span className="branch-item-name">{ref.name}</span>
-                      {ref.name === list?.defaultBase && <span className="branch-item-badge">default</span>}
-                      <span className="branch-item-date">{ago(ref.updatedAt)}</span>
+                      {ref.name === list?.defaultBase && <span className="branch-item-badge">{t('branchPicker.default')}</span>}
+                      <span className="branch-item-date">{ago(relative, ref.updatedAt)}</span>
                     </button>
                   )
                 })}
@@ -151,7 +146,7 @@ export function BranchPicker({ list, value, refreshing, onChange, onRefresh }: P
           </div>
           {hiddenOthers > 0 && (
             <div className="branch-footer">
-              {hiddenOthers} {hiddenOthers === 1 ? 'rama más de otros' : 'ramas más de otros'} · escribí para buscarlas
+              {t('branchPicker.hiddenOthers', { count: hiddenOthers })}
             </div>
           )}
         </div>

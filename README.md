@@ -42,3 +42,15 @@ pnpm package:win  # genera el instalador NSIS en el espejo (apps\desktop\release
 ```
 
 `app:win` corre la app con el `electron.exe` oficial porque Smart App Control bloquea ejecutables sin firma. `package:win` funciona en máquinas sin Smart App Control o cuando el ejecutable esté firmado.
+
+## Idiomas
+
+Los textos de la interfaz viven en `apps/desktop/src/renderer/src/i18n/locales/`. `es.ts` es la fuente de verdad: las claves y los parámetros de `t()` se tipan a partir de ese archivo.
+
+Para agregar un idioma:
+
+1. Sumar su código a `LOCALE_IDS` en `apps/desktop/src/shared/locales.ts`.
+2. Crear `locales/<código>.ts` tipado como `Messages` (copiando `en.ts` como base).
+3. Registrarlo en `LOCALES` (`i18n/catalog.ts`) con su nombre nativo y su `load()`.
+
+Si falta una clave o un idioma no está registrado, no compila. Los tests verifican además que cada traducción use los mismos `{placeholders}` que el español.

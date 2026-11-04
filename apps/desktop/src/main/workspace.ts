@@ -23,6 +23,7 @@ import {
   type Worktree,
 } from '@mjolnir/core'
 import type { DiffFile, SessionDiff } from '../shared/api'
+import { AppError } from '../shared/errors'
 import type { Store } from './store'
 
 const MAX_DIFF_BYTES = 1.5 * 1024 * 1024
@@ -85,7 +86,7 @@ export class Workspace {
     const isNew = !findBranch((await git.branches(repo.path)).refs, branch)
     await git.addWorktree(repo.path, target, branch, base)
     const created = (await git.worktrees(repo.path)).find((wt) => wt.path === target)
-    if (!created) throw new Error(`El worktree no aparece en ${target}`)
+    if (!created) throw new AppError('worktreeMissing', { path: target })
     if (isNew) this.store.setSessionBase(sessionKey(repoId, target), base)
     return created
   }
@@ -129,7 +130,7 @@ export class Workspace {
 
   private repo(id: string): Repo {
     const repo = this.store.repos().find((r) => r.id === id)
-    if (!repo) throw new Error(`Repo desconocido: ${id}`)
+    if (!repo) throw new AppError('unknownRepo', { id })
     return repo
   }
 

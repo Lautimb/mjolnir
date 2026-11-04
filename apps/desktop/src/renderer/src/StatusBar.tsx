@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { FileDiff, GitBranch, Server } from 'lucide-react'
-import { hostLabel } from '@mjolnir/core/browser'
+import { hostLabel, useI18n } from './i18n/I18nProvider'
 import type { Session } from './model'
 
 const POLL_MS = 5000
 
 export function StatusBar({ session, onOpenDiff }: { session: Session; onOpenDiff(): void }) {
+  const { t } = useI18n()
   const [changes, setChanges] = useState<number | null>(null)
   const { repo, worktree } = session
   const repoId = repo?.id
@@ -32,7 +33,7 @@ export function StatusBar({ session, onOpenDiff }: { session: Session; onOpenDif
     <footer className="statusbar">
       <span className={`status-item host host-${session.host.kind}`}>
         <Server size={12} />
-        {hostLabel(session.host)}
+        {hostLabel(t, session.host)}
       </span>
       {worktree && (
         <span className="status-item">
@@ -41,9 +42,9 @@ export function StatusBar({ session, onOpenDiff }: { session: Session; onOpenDif
         </span>
       )}
       {changes !== null && (
-        <button className="status-item status-link" title="Ver diff" onClick={onOpenDiff}>
+        <button className="status-item status-link" title={t('statusBar.openDiff')} onClick={onOpenDiff}>
           <FileDiff size={12} />
-          {changes === 0 ? 'Sin cambios' : `${changes} ${changes === 1 ? 'archivo cambiado' : 'archivos cambiados'}`}
+          {changes === 0 ? t('statusBar.noChanges') : t('statusBar.changedFiles', { count: changes })}
         </button>
       )}
       <span className="status-spacer" />

@@ -14,6 +14,7 @@ import {
 } from '@mjolnir/core'
 import icon from '../../resources/icon.png?asset'
 import type { SpawnRequest } from '../shared/api'
+import { AppError } from '../shared/errors'
 import { TITLEBAR_HEIGHT, type Settings } from '../shared/settings'
 import { PtyManager } from './pty'
 import { Store } from './store'
@@ -101,10 +102,10 @@ function registerIpc(workspace: Workspace, store: Store): void {
   ipcMain.handle('repos:hosts', () => repoHosts)
   ipcMain.handle('repos:discover', (_event, host: Host) => workspace.discover(host))
   ipcMain.handle('repos:add', (_event, host: Host, path: string) => workspace.addRepo(host, path))
-  ipcMain.handle('repos:browse', async (_event, host: Host) => {
+  ipcMain.handle('repos:browse', async (_event, host: Host, title: string) => {
     const home = toNativePath(process.platform, host, await hostHome(host))
     const result = await dialog.showOpenDialog(mainWindow!, {
-      title: 'Agregar repositorio',
+      title,
       defaultPath: home,
       properties: ['openDirectory'],
     })
@@ -135,7 +136,7 @@ function registerIpc(workspace: Workspace, store: Store): void {
 
   ipcMain.handle('pty:spawn', (_event, { id, profileId, cols, rows, cwd, initialInput }: SpawnRequest) => {
     const profile = profiles.find((p) => p.id === profileId)
-    if (!profile) throw new Error(`Perfil de terminal desconocido: ${profileId}`)
+    if (!profile) throw new AppError('unknownProfile', { id: profileId })
     ptys.spawn(id, spawnCommand(profile, cwd), cols, rows, initialInput)
   })
   ipcMain.on('pty:write', (_event, id: string, data: string) => ptys.write(id, data))

@@ -3,19 +3,20 @@ import { Columns2, FileDiff, RefreshCw, Rows2 } from 'lucide-react'
 import type { ChangeStatus, CompareMode, FileChange } from '@mjolnir/core/browser'
 import type { DiffFile, SessionDiff } from '../../shared/api'
 import { MonacoDiff } from './MonacoDiff'
-import { errorMessage, type Session } from './model'
+import { describeError, useI18n } from './i18n/I18nProvider'
+import type { Session } from './model'
 
 const POLL_MS = 4000
 
-const STATUS: Record<ChangeStatus, { letter: string; label: string }> = {
-  modified: { letter: 'M', label: 'Modificado' },
-  added: { letter: 'A', label: 'Agregado' },
-  deleted: { letter: 'D', label: 'Eliminado' },
-  renamed: { letter: 'R', label: 'Renombrado' },
-  untracked: { letter: 'N', label: 'Nuevo, sin trackear' },
+const STATUS_LETTER: Record<ChangeStatus, string> = {
+  modified: 'M',
+  added: 'A',
+  deleted: 'D',
+  renamed: 'R',
+  untracked: 'N',
 }
 
-type Content = { state: 'loading' } | { state: 'error'; message: string } | ({ state: 'ready'; path: string } & DiffFile)
+type Content = { state: 'loading' } | { state: 'error'; error: unknown } | ({ state: 'ready'; path: string } & DiffFile)
 
 function signature(file: FileChange | undefined, from: string | undefined): string {
   return file && from ? `${from}|${file.status}|${file.oldPath ?? ''}|${file.additions}|${file.deletions}` : ''
@@ -28,10 +29,11 @@ interface Props {
 }
 
 export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
+  const { t } = useI18n()
   const { repo, worktree } = session
   const [mode, setMode] = useState<CompareMode>('working')
   const [diff, setDiff] = useState<SessionDiff | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<unknown>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState<Content>({ state: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
@@ -46,7 +48,7 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
       setDiff(await window.mjolnir.diff.compare(repoId, path, mode))
       setError(null)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(err)
     }
   }, [repoId, path, mode])
 
@@ -74,7 +76,7 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
     setContent((previous) => (previous.state === 'ready' && previous.path === filePath ? previous : { state: 'loading' }))
     window.mjolnir.diff.file(repoId, path, diff.from, current).then(
       (file) => !cancelled && setContent({ state: 'ready', path: filePath, ...file }),
-      (err: unknown) => !cancelled && setContent({ state: 'error', message: errorMessage(err) }),
+      (err: unknown) => !cancelled && setContent({ state: 'error', error: err }),
     )
     return () => {
       cancelled = true
@@ -93,7 +95,7 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
       <section className="diff-view">
         <div className="diff-empty">
           <FileDiff size={22} />
-          <p>Elegí una sesión en el panel para ver sus cambios.</p>
+          <p>{t('diff.pickSession')}</p>
         </div>
       </section>
     )
@@ -109,19 +111,19 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
       <header className="diff-toolbar">
         <div className="segmented" role="radiogroup">
           <button className={mode === 'working' ? 'selected' : undefined} onClick={() => setMode('working')}>
-            Sin commitear
+            {t('diff.modes.working')}
           </button>
           <button className={mode === 'branch' ? 'selected' : undefined} onClick={() => setMode('branch')}>
-            Toda la branch
+            {t('diff.modes.branch')}
           </button>
         </div>
         {mode === 'branch' && (
-          <span className="diff-base" title="Se compara contra el punto donde la sesión se separó de su base">
-            {diff?.base ? `vs ${diff.base}` : 'sin base: se compara contra HEAD'}
+          <span className="diff-base" title={t('diff.baseHint')}>
+            {diff?.base ? t('diff.versus', { base: diff.base }) : t('diff.noBase')}
           </span>
         )}
         <span className="diff-summary">
-          {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
+          {t('diff.files', { count: files.length })}
           {files.length > 0 && (
             <>
               <span className="added">+{totals.additions}</span>
@@ -132,22 +134,22 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
         <span className="status-spacer" />
         <button
           className="icon-button"
-          title={sideBySide ? 'Ver unificado' : 'Ver lado a lado'}
+          title={sideBySide ? t('diff.inline') : t('diff.sideBySide')}
           onClick={() => onSideBySideChange(!sideBySide)}
         >
           {sideBySide ? <Rows2 size={15} /> : <Columns2 size={15} />}
         </button>
-        <button className="icon-button" title="Actualizar" disabled={refreshing} onClick={refresh}>
+        <button className="icon-button" title={t('common.refresh')} disabled={refreshing} onClick={refresh}>
           <RefreshCw size={14} className={refreshing ? 'spin' : undefined} />
         </button>
       </header>
 
-      {error && <div className="diff-error">{error}</div>}
+      {error !== null && <div className="diff-error">{describeError(t, error)}</div>}
 
-      {!error && diff && files.length === 0 ? (
+      {error === null && diff && files.length === 0 ? (
         <div className="diff-empty">
           <FileDiff size={22} />
-          <p>{mode === 'working' ? 'Sin cambios desde el último commit.' : `Sin cambios respecto de ${diff.base ?? 'HEAD'}.`}</p>
+          <p>{mode === 'working' ? t('diff.emptyWorking') : t('diff.emptyBranch', { base: diff.base ?? 'HEAD' })}</p>
         </div>
       ) : (
         <div className="diff-body">
@@ -161,8 +163,8 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
                     title={file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}
                     onClick={() => setSelected(file.path)}
                   >
-                    <span className={`diff-status status-${file.status}`} title={STATUS[file.status].label}>
-                      {STATUS[file.status].letter}
+                    <span className={`diff-status status-${file.status}`} title={t(`diff.status.${file.status}`)}>
+                      {STATUS_LETTER[file.status]}
                     </span>
                     <span className="diff-file-name">{file.path.slice(slash + 1)}</span>
                     <span className="diff-file-dir">{slash > 0 ? file.path.slice(0, slash) : ''}</span>
@@ -181,9 +183,9 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
             {content.state === 'ready' && content.kind === 'text' && (
               <MonacoDiff path={content.path} original={content.original} modified={content.modified} sideBySide={sideBySide} />
             )}
-            {content.state === 'ready' && content.kind === 'binary' && <p className="diff-note">Archivo binario: no se puede mostrar el diff.</p>}
-            {content.state === 'ready' && content.kind === 'too-large' && <p className="diff-note">Archivo demasiado grande para mostrar el diff.</p>}
-            {content.state === 'error' && <p className="diff-note error">{content.message}</p>}
+            {content.state === 'ready' && content.kind === 'binary' && <p className="diff-note">{t('diff.binary')}</p>}
+            {content.state === 'ready' && content.kind === 'too-large' && <p className="diff-note">{t('diff.tooLarge')}</p>}
+            {content.state === 'error' && <p className="diff-note error">{describeError(t, content.error)}</p>}
           </div>
         </div>
       )}

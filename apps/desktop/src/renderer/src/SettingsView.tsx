@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
+import { LOCALE_IDS, type LanguagePreference } from '../../shared/locales'
 import type { Settings } from '../../shared/settings'
+import { LOCALES } from './i18n/catalog'
+import { useI18n } from './i18n/I18nProvider'
 
 interface Props {
   settings: Settings
@@ -45,19 +48,39 @@ function Setting({ title, description, children }: { title: string; description:
 }
 
 export function SettingsView({ settings, onChange }: Props) {
+  const { t } = useI18n()
+
   return (
     <div className="settings">
       <div className="settings-inner">
-        <h1>Ajustes</h1>
+        <h1>{t('settings.title')}</h1>
 
         <section>
-          <h2>Apariencia</h2>
-          <Setting title="Posición del panel" description="Lado de la ventana donde van el panel de sesiones y la barra de vistas.">
+          <h2>{t('settings.sections.general')}</h2>
+          <Setting title={t('settings.language.title')} description={t('settings.language.description')}>
+            <select
+              className="select"
+              value={settings.language}
+              onChange={(event) => onChange({ language: event.target.value as LanguagePreference })}
+            >
+              <option value="system">{t('settings.language.system')}</option>
+              {LOCALE_IDS.map((id) => (
+                <option key={id} value={id} lang={id}>
+                  {LOCALES[id].nativeName}
+                </option>
+              ))}
+            </select>
+          </Setting>
+        </section>
+
+        <section>
+          <h2>{t('settings.sections.appearance')}</h2>
+          <Setting title={t('settings.panelPosition.title')} description={t('settings.panelPosition.description')}>
             <Segmented
               value={settings.panelPosition}
               options={[
-                ['left', 'Izquierda'],
-                ['right', 'Derecha'],
+                ['left', t('settings.panelPosition.left')],
+                ['right', t('settings.panelPosition.right')],
               ]}
               onChange={(panelPosition) => onChange({ panelPosition })}
             />
@@ -65,24 +88,24 @@ export function SettingsView({ settings, onChange }: Props) {
         </section>
 
         <section>
-          <h2>Terminal</h2>
-          <Setting title="Cursor" description="Forma del cursor dentro de las terminales.">
+          <h2>{t('settings.sections.terminal')}</h2>
+          <Setting title={t('settings.cursor.title')} description={t('settings.cursor.description')}>
             <Segmented
               value={settings.terminalCursorStyle}
               options={[
-                ['bar', 'Barra'],
-                ['block', 'Bloque'],
-                ['underline', 'Subrayado'],
+                ['bar', t('settings.cursor.bar')],
+                ['block', t('settings.cursor.block')],
+                ['underline', t('settings.cursor.underline')],
               ]}
               onChange={(terminalCursorStyle) => onChange({ terminalCursorStyle })}
             />
           </Setting>
-          <Setting title="Parpadeo del cursor" description="El cursor parpadea mientras la terminal tiene foco.">
+          <Setting title={t('settings.cursorBlink.title')} description={t('settings.cursorBlink.description')}>
             <Segmented
               value={settings.terminalCursorBlink ? 'on' : 'off'}
               options={[
-                ['on', 'Sí'],
-                ['off', 'No'],
+                ['on', t('settings.cursorBlink.on')],
+                ['off', t('settings.cursorBlink.off')],
               ]}
               onChange={(value) => onChange({ terminalCursorBlink: value === 'on' })}
             />

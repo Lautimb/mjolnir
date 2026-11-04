@@ -44,11 +44,6 @@ export function toNativePath(platform: NodeJS.Platform, host: Host, path: string
   return path
 }
 
-export function hostLabel(host: Host): string {
-  if (host.kind === 'wsl') return `WSL: ${host.distro}`
-  return host.kind === 'windows' ? 'Windows' : 'Local'
-}
-
 export function buildHostCommand(
   platform: NodeJS.Platform,
   host: Host,
