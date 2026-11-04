@@ -113,6 +113,8 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
   }
 
   const canOpenPull = branch !== null && branch !== context.defaultBranch
+  const shownAbove = canOpenPull && sessionPull ? sessionPull.number : null
+  const listed = pulls?.filter((pull) => pull.number !== shownAbove)
 
   return (
     <section className="pulls-view">
@@ -151,8 +153,8 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
 
         <div className="pulls-items">
           {error !== null && <p className="diff-note error">{describeError(t, error)}</p>}
-          {pulls?.length === 0 && <p className="diff-note">{t(`pulls.empty.${filter}`)}</p>}
-          {pulls?.map((pull) => (
+          {listed?.length === 0 && shownAbove === null && <p className="diff-note">{t(`pulls.empty.${filter}`)}</p>}
+          {listed?.map((pull) => (
             <PullRow
               key={pull.number}
               pull={pull}
