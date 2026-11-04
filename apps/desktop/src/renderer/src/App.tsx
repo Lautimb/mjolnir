@@ -10,11 +10,12 @@ import { StatusBar } from './StatusBar'
 import { TabBar } from './TabBar'
 import { TerminalView } from './TerminalView'
 import { TitleBar } from './TitleBar'
-import { useSettings } from './useSettings'
+import { describeError, useI18n } from './i18n/I18nProvider'
+import type { UpdateSettings } from './useSettings'
 import { useWorkspace } from './useWorkspace'
+import type { Settings } from '../../shared/settings'
 import {
   SCRATCH_KEY,
-  errorMessage,
   sessionKey,
   worktreeSession,
   type Agent,
@@ -26,9 +27,14 @@ const NOTICE_MS = 8000
 
 const DiffView = lazy(() => import('./DiffView').then((module) => ({ default: module.DiffView })))
 
-export function App() {
+interface Props {
+  settings: Settings
+  onSettingsChange: UpdateSettings
+}
+
+export function App({ settings, onSettingsChange: updateSettings }: Props) {
+  const { t } = useI18n()
   const workspace = useWorkspace()
-  const [settings, updateSettings] = useSettings()
   const [view, setView] = useState<View>('sessions')
   const { repos, worktrees } = workspace
   const [profiles, setProfiles] = useState<TerminalProfile[]>([])
@@ -50,7 +56,7 @@ export function App() {
 
   const sessions = useMemo(() => {
     const map = new Map<string, Session>()
-    map.set(SCRATCH_KEY, { key: SCRATCH_KEY, host: window.mjolnir.appHost, title: 'Terminales libres' })
+    map.set(SCRATCH_KEY, { key: SCRATCH_KEY, host: window.mjolnir.appHost, title: t('sidebar.scratch') })
     for (const repo of repos) {
       for (const worktree of worktrees[repo.id] ?? []) {
         const session = worktreeSession(repo, worktree)
@@ -58,7 +64,7 @@ export function App() {
       }
     }
     return map
-  }, [repos, worktrees])
+  }, [repos, worktrees, t])
 
   const session = sessions.get(activeKey) ?? sessions.get(SCRATCH_KEY)!
   const sessionProfiles =
@@ -78,7 +84,7 @@ export function App() {
 
   const openAgent = (agent: Agent) => {
     const profile = sessionProfiles[0]
-    if (!profile) return setNotice('No hay una terminal disponible para este host.')
+    if (!profile) return setNotice(t('errors.noTerminal'))
     openTab({ profile, label: agent.label, kind: 'agent', cwd: session.cwd, initialInput: `${agent.command}\r` })
   }
 
@@ -101,7 +107,7 @@ export function App() {
   }
 
   const removeRepo = async (repo: Repo) => {
-    if (!confirm(`¿Quitar "${repo.name}" de Mjolnir?\n\nNo se borra nada del disco. Se cierran sus terminales.`)) return
+    if (!confirm(t('sessions.confirmRemoveRepo', { name: repo.name }))) return
     const prefix = `${repo.id}::`
     closeTabs((tab) => tab.sessionKey.startsWith(prefix))
     if (activeKey.startsWith(prefix)) setActiveKey(SCRATCH_KEY)
@@ -115,9 +121,7 @@ export function App() {
 
   const removeSession = async (repo: Repo, worktree: Worktree) => {
     const name = worktree.branch ?? worktree.path
-    if (!confirm(`¿Eliminar la sesión "${name}"?\n\nSe borra el worktree y se cierran sus terminales. La branch se conserva.`)) {
-      return
-    }
+    if (!confirm(t('sessions.confirmRemove', { name }))) return
     const key = sessionKey(repo, worktree)
     closeTabs((tab) => tab.sessionKey === key)
     if (activeKey === key) {
@@ -127,10 +131,10 @@ export function App() {
     try {
       await workspace.removeWorktree(repo.id, worktree.path, false)
     } catch (error) {
-      const message = errorMessage(error)
+      const message = describeError(t, error)
       if (!/modified or untracked/.test(message)) return setNotice(message)
-      if (!confirm(`"${name}" tiene cambios sin commitear.\n\n¿Eliminar igual? Se pierden esos cambios.`)) return
-      await workspace.removeWorktree(repo.id, worktree.path, true).catch((err: unknown) => setNotice(errorMessage(err)))
+      if (!confirm(t('sessions.confirmForceRemove', { name }))) return
+      await workspace.removeWorktree(repo.id, worktree.path, true).catch((err: unknown) => setNotice(describeError(t, err)))
     }
   }
 
@@ -199,7 +203,7 @@ export function App() {
       {notice && (
         <div className="toast" role="alert">
           <span>{notice}</span>
-          <button className="icon-button" aria-label="Cerrar" onClick={() => setNotice(null)}>
+          <button className="icon-button" aria-label={t('common.close')} onClick={() => setNotice(null)}>
             <X size={14} />
           </button>
         </div>

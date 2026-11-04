@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { findBranch, type BranchList, type Repo } from '@mjolnir/core/browser'
 import { BranchPicker } from './BranchPicker'
-import { errorMessage } from './model'
+import { describeError, useI18n } from './i18n/I18nProvider'
 
 interface Props {
   repo: Repo
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props) {
+  const { t } = useI18n()
   const [branch, setBranch] = useState('')
   const [base, setBase] = useState<string | null>(null)
   const [branches, setBranches] = useState<BranchList | null>(null)
@@ -19,8 +20,8 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    window.mjolnir.repos.branches(repo.id).then(setBranches, (err: unknown) => setError(errorMessage(err)))
-  }, [repo.id])
+    window.mjolnir.repos.branches(repo.id).then(setBranches, (err: unknown) => setError(describeError(t, err)))
+  }, [repo.id, t])
 
   const selectedBase = base ?? branches?.defaultBase ?? fallbackBase
   const match = branches && branch.trim() ? findBranch(branches.refs, branch.trim()) : undefined
@@ -31,7 +32,7 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
     try {
       setBranches(await window.mjolnir.repos.fetch(repo.id))
     } catch (err) {
-      setError(errorMessage(err))
+      setError(describeError(t, err))
     } finally {
       setFetching(false)
     }
@@ -45,7 +46,7 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
     try {
       await onCreate(branch.trim(), selectedBase)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(describeError(t, err))
       setBusy(false)
     }
   }
@@ -53,10 +54,10 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
   return (
     <form className="new-session" onSubmit={submit} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
       <label className="field">
-        Branch
+        {t('newSession.branch')}
         <input
           autoFocus
-          placeholder="feat/mi-feature"
+          placeholder={t('newSession.branchPlaceholder')}
           value={branch}
           onChange={(event) => setBranch(event.target.value)}
           spellCheck={false}
@@ -64,13 +65,11 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
       </label>
       {match ? (
         <div className="field-hint">
-          {match.remote
-            ? `Existe en el remoto: se crea local siguiendo ${match.name}.`
-            : 'Ya existe localmente: se abre esa branch.'}
+          {match.remote ? t('newSession.existsRemote', { branch: match.name }) : t('newSession.existsLocal')}
         </div>
       ) : (
         <div className="field">
-          Desde
+          {t('newSession.from')}
           <BranchPicker
             list={branches}
             value={selectedBase}
@@ -83,10 +82,10 @@ export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props
       {error && <div className="form-error">{error}</div>}
       <div className="form-actions">
         <button type="button" className="button ghost" onClick={onCancel}>
-          Cancelar
+          {t('common.cancel')}
         </button>
         <button type="submit" className="button primary" disabled={busy || !branch.trim()}>
-          {busy ? 'Creando…' : match ? 'Abrir sesión' : 'Crear sesión'}
+          {busy ? t('newSession.creating') : match ? t('newSession.open') : t('newSession.create')}
         </button>
       </div>
     </form>

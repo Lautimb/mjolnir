@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { CornerDownLeft, FolderGit2, FolderOpen, FolderSearch, Loader2 } from 'lucide-react'
-import { hostKey, hostLabel, sameHost, type DiscoveredRepos, type Host, type Repo } from '@mjolnir/core/browser'
-import { errorMessage } from './model'
+import { hostKey, sameHost, type DiscoveredRepos, type Host, type Repo } from '@mjolnir/core/browser'
+import { describeError, hostLabel, useI18n } from './i18n/I18nProvider'
 
-type Discovery = { status: 'loading' } | { status: 'ready'; result: DiscoveredRepos } | { status: 'error'; message: string }
+type Discovery = { status: 'loading' } | { status: 'ready'; result: DiscoveredRepos } | { status: 'error'; error: unknown }
 
 interface Item {
   path: string
@@ -24,6 +24,7 @@ function looksLikePath(query: string): boolean {
 }
 
 export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
+  const { t } = useI18n()
   const [hosts, setHosts] = useState<Host[]>([])
   const [host, setHost] = useState<Host | null>(null)
   const [discoveries, setDiscoveries] = useState<Record<string, Discovery>>({})
@@ -46,7 +47,7 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
     setDiscoveries((current) => ({ ...current, [key]: { status: 'loading' } }))
     window.mjolnir.repos.discover(host).then(
       (result) => setDiscoveries((current) => ({ ...current, [key]: { status: 'ready', result } })),
-      (err: unknown) => setDiscoveries((current) => ({ ...current, [key]: { status: 'error', message: errorMessage(err) } })),
+      (error: unknown) => setDiscoveries((current) => ({ ...current, [key]: { status: 'error', error } })),
     )
   }, [host, discoveries])
 
@@ -79,7 +80,7 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
     try {
       await onAdd(request)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(describeError(t, err))
     } finally {
       setBusy(false)
     }
@@ -100,9 +101,9 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
 
   return (
     <div className="overlay" onMouseDown={onClose}>
-      <div className="dialog" role="dialog" aria-label="Agregar repositorio" onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
+      <div className="dialog" role="dialog" aria-label={t('addRepo.title')} onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
         <div className="dialog-header">
-          <span>Agregar repositorio</span>
+          <span>{t('addRepo.title')}</span>
           {hosts.length > 1 && (
             <div className="segmented">
               {hosts.map((option) => (
@@ -111,7 +112,7 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
                   className={host && sameHost(host, option) ? 'selected' : undefined}
                   onClick={() => setHost(option)}
                 >
-                  {hostLabel(option)}
+                  {hostLabel(t, option)}
                 </button>
               ))}
             </div>
@@ -122,7 +123,7 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
           <FolderSearch size={16} />
           <input
             autoFocus
-            placeholder={host?.kind === 'windows' ? 'Pegá una ruta, ej. C:\\code\\mi-repo' : 'Buscá un repo o pegá una ruta…'}
+            placeholder={host?.kind === 'windows' ? t('addRepo.placeholderWindows') : t('addRepo.placeholder')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             spellCheck={false}
@@ -133,17 +134,17 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
         <div className="dialog-list">
           {discovery?.status === 'loading' && (
             <div className="dialog-hint">
-              <Loader2 size={14} className="spin" /> Buscando repos en {host ? hostLabel(host) : ''}…
+              <Loader2 size={14} className="spin" /> {t('addRepo.searching', { host: host ? hostLabel(t, host) : '' })}
             </div>
           )}
-          {discovery?.status === 'error' && <div className="dialog-hint error">{discovery.message}</div>}
+          {discovery?.status === 'error' && <div className="dialog-hint error">{describeError(t, discovery.error)}</div>}
           {discovery?.status === 'ready' && items.length === 0 && (
             <div className="dialog-hint">
               {host?.kind === 'windows'
-                ? 'En Windows no se buscan repos automáticamente. Pegá una ruta o usá Explorar.'
+                ? t('addRepo.windowsNoScan')
                 : query
-                  ? 'Ningún repo coincide. Probá pegando la ruta completa.'
-                  : `No se encontraron repos en ${shorten(home) || '~'}.`}
+                  ? t('addRepo.noMatch')
+                  : t('addRepo.noneFound', { path: shorten(home) || '~' })}
             </div>
           )}
           {items.map((item, index) => (
@@ -154,9 +155,9 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
               onClick={() => add(item)}
             >
               <FolderGit2 size={15} />
-              <span className="dialog-item-name">{item.typed ? 'Agregar esta ruta' : item.name}</span>
+              <span className="dialog-item-name">{item.typed ? t('addRepo.addPath') : item.name}</span>
               <span className="dialog-item-path">{shorten(item.path)}</span>
-              {isAdded(item.path) && <span className="dialog-item-badge">Agregado</span>}
+              {isAdded(item.path) && <span className="dialog-item-badge">{t('addRepo.added')}</span>}
               {index === selected && <CornerDownLeft size={13} className="dialog-item-enter" />}
             </button>
           ))}
@@ -165,11 +166,11 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
         {error && <div className="dialog-error">{error}</div>}
 
         <div className="dialog-footer">
-          <button className="button ghost" disabled={!host || busy} onClick={() => host && void run(() => window.mjolnir.repos.browse(host))}>
+          <button className="button ghost" disabled={!host || busy} onClick={() => host && void run(() => window.mjolnir.repos.browse(host, t('addRepo.title')))}>
             <FolderOpen size={14} />
-            Explorar…
+            {t('addRepo.browse')}
           </button>
-          <span className="dialog-keys">↑↓ para moverte · Enter para agregar · Esc para salir</span>
+          <span className="dialog-keys">{t('addRepo.keys')}</span>
         </div>
       </div>
     </div>

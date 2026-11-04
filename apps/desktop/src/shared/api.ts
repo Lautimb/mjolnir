@@ -41,7 +41,7 @@ export interface MjolnirApi {
     hosts(): Promise<Host[]>
     discover(host: Host): Promise<DiscoveredRepos>
     add(host: Host, path: string): Promise<Repo>
-    browse(host: Host): Promise<Repo | null>
+    browse(host: Host, title: string): Promise<Repo | null>
     remove(id: string): Promise<void>
     branches(id: string): Promise<BranchList>
     fetch(id: string): Promise<BranchList>

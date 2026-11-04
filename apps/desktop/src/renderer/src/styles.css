@@ -1084,6 +1084,22 @@ button:disabled {
   color: var(--color-text-muted);
 }
 
+.select {
+  flex: none;
+  min-width: 160px;
+  height: 30px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
 .segmented {
   display: flex;
   flex: none;

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Repo, Worktree } from '@mjolnir/core/browser'
-import { errorMessage } from './model'
 
 const api = () => window.mjolnir
 
 export function useWorkspace() {
   const [repos, setRepos] = useState<Repo[]>([])
   const [worktrees, setWorktrees] = useState<Record<string, Worktree[]>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, unknown>>({})
 
   const loadWorktrees = useCallback(async (repoId: string) => {
     try {
@@ -15,7 +14,7 @@ export function useWorkspace() {
       setWorktrees((current) => ({ ...current, [repoId]: list }))
       setErrors(({ [repoId]: _, ...rest }) => rest)
     } catch (error) {
-      setErrors((current) => ({ ...current, [repoId]: errorMessage(error) }))
+      setErrors((current) => ({ ...current, [repoId]: error }))
     }
   }, [])
 

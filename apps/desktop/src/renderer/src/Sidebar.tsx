@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { ChevronRight, FolderPlus, GitBranch, Plus, SquareTerminal, Trash2, X, Zap } from 'lucide-react'
-import { hostLabel, type Host, type Repo, type Worktree } from '@mjolnir/core/browser'
+import type { Repo, Worktree } from '@mjolnir/core/browser'
+import { describeError, hostLabel, useI18n } from './i18n/I18nProvider'
 import { NewSessionForm } from './NewSessionForm'
 import { SCRATCH_KEY, sessionKey, type Tab } from './model'
-
-const HOST_SHORT: Record<Host['kind'], string> = { wsl: 'WSL', windows: 'Win', posix: 'Local' }
 
 interface Props {
   repos: Repo[]
   worktrees: Record<string, Worktree[]>
-  errors: Record<string, string>
+  errors: Record<string, unknown>
   tabs: Tab[]
   activeKey: string
   onSelect(key: string): void
@@ -21,6 +20,7 @@ interface Props {
 
 export function Sidebar(props: Props) {
   const { repos, worktrees, errors, tabs, activeKey, onSelect, onAddRepo } = props
+  const { t } = useI18n()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [creatingIn, setCreatingIn] = useState<string | null>(null)
 
@@ -34,8 +34,8 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        Sesiones
-        <button className="icon-button" title="Agregar repositorio" onClick={onAddRepo}>
+        {t('sidebar.title')}
+        <button className="icon-button" title={t('sidebar.addRepo')} onClick={onAddRepo}>
           <FolderPlus size={15} />
         </button>
       </div>
@@ -47,12 +47,12 @@ export function Sidebar(props: Props) {
           onClick={() => onSelect(SCRATCH_KEY)}
         >
           <SquareTerminal size={15} />
-          <span className="row-label">Terminales libres</span>
+          <span className="row-label">{t('sidebar.scratch')}</span>
           {scratch.terminals > 0 && <span className="terminal-count">{scratch.terminals}</span>}
         </div>
 
         {repos.length === 0 && (
-          <p className="sidebar-empty">Agregá un repositorio para crear sesiones con worktrees.</p>
+          <p className="sidebar-empty">{t('sidebar.empty')}</p>
         )}
 
         {repos.map((repo) => {
@@ -70,13 +70,13 @@ export function Sidebar(props: Props) {
               >
                 <ChevronRight size={14} className={`chevron${open ? ' open' : ''}`} />
                 <span className="row-label">{repo.name}</span>
-                <span className={`host-badge host-${repo.host.kind}`} title={hostLabel(repo.host)}>
-                  {HOST_SHORT[repo.host.kind]}
+                <span className={`host-badge host-${repo.host.kind}`} title={hostLabel(t, repo.host)}>
+                  {t(`hosts.short.${repo.host.kind}`)}
                 </span>
                 <span className="row-actions">
                   <button
                     className="icon-button"
-                    title="Nueva sesión"
+                    title={t('sidebar.newSession')}
                     onClick={(event) => {
                       event.stopPropagation()
                       setCollapsed((c) => ({ ...c, [repo.id]: false }))
@@ -87,7 +87,7 @@ export function Sidebar(props: Props) {
                   </button>
                   <button
                     className="icon-button danger"
-                    title="Quitar repositorio de Mjolnir"
+                    title={t('sidebar.removeRepo')}
                     onClick={(event) => {
                       event.stopPropagation()
                       props.onRemoveRepo(repo)
@@ -98,7 +98,7 @@ export function Sidebar(props: Props) {
                 </span>
               </div>
 
-              {errors[repo.id] && <p className="repo-error">{errors[repo.id]}</p>}
+              {errors[repo.id] !== undefined && <p className="repo-error">{describeError(t, errors[repo.id])}</p>}
 
               {open &&
                 list.map((worktree) => {
@@ -116,14 +116,14 @@ export function Sidebar(props: Props) {
                       <GitBranch size={14} className="branch-icon" />
                       <span className="row-label">{worktree.branch ?? worktree.head.slice(0, 7)}</span>
                       <span className="session-indicators">
-                        {state.agent && <Zap size={13} className="agent-indicator" aria-label="Agente activo" />}
+                        {state.agent && <Zap size={13} className="agent-indicator" aria-label={t('sidebar.agentActive')} />}
                         {state.terminals > 0 && <span className="terminal-count">{state.terminals}</span>}
                       </span>
                       {!worktree.main && (
                         <span className="row-actions">
                           <button
                             className="icon-button danger"
-                            title="Eliminar sesión y su worktree"
+                            title={t('sidebar.removeSession')}
                             onClick={(event) => {
                               event.stopPropagation()
                               props.onRemoveSession(repo, worktree)
@@ -152,7 +152,7 @@ export function Sidebar(props: Props) {
               {open && creatingIn !== repo.id && (
                 <button className="row add-session" onClick={() => setCreatingIn(repo.id)}>
                   <Plus size={14} />
-                  <span className="row-label">Nueva sesión</span>
+                  <span className="row-label">{t('sidebar.newSession')}</span>
                 </button>
               )}
             </section>

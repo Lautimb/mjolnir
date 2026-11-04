@@ -22,16 +22,17 @@ export interface Tab {
   exitCode?: number
 }
 
+export type AgentId = 'claude' | 'opencode'
+
 export interface Agent {
-  id: string
+  id: AgentId
   label: string
-  description: string
   command: string
 }
 
 export const AGENTS: Agent[] = [
-  { id: 'claude', label: 'Claude Code', description: 'Agente de Anthropic', command: 'claude' },
-  { id: 'opencode', label: 'opencode', description: 'Agente open source', command: 'opencode' },
+  { id: 'claude', label: 'Claude Code', command: 'claude' },
+  { id: 'opencode', label: 'opencode', command: 'opencode' },
 ]
 
 export function sessionKey(repo: Repo, worktree: Worktree): string {
@@ -47,9 +48,4 @@ export function worktreeSession(repo: Repo, worktree: Worktree): Session {
     repo,
     worktree,
   }
-}
-
-export function errorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
