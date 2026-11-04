@@ -1,0 +1,57 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import type { Repo } from '@mjolnir/core'
+import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
+
+interface StoreData {
+  repos: Repo[]
+  settings: Settings
+}
+
+export class Store {
+  private data: StoreData
+
+  constructor(private readonly file: string) {
+    this.data = this.load()
+  }
+
+  repos(): Repo[] {
+    return this.data.repos
+  }
+
+  addRepo(repo: Repo): void {
+    this.data.repos = [...this.data.repos, repo]
+    this.save()
+  }
+
+  removeRepo(id: string): void {
+    this.data.repos = this.data.repos.filter((repo) => repo.id !== id)
+    this.save()
+  }
+
+  settings(): Settings {
+    return this.data.settings
+  }
+
+  updateSettings(patch: Partial<Settings>): Settings {
+    this.data.settings = { ...this.data.settings, ...patch }
+    this.save()
+    return this.data.settings
+  }
+
+  private load(): StoreData {
+    try {
+      const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<StoreData>
+      return { repos: parsed.repos ?? [], settings: { ...DEFAULT_SETTINGS, ...parsed.settings } }
+    } catch {
+      return { repos: [], settings: DEFAULT_SETTINGS }
+    }
+  }
+
+  private save(): void {
+    mkdirSync(dirname(this.file), { recursive: true })
+    const temp = `${this.file}.tmp`
+    writeFileSync(temp, JSON.stringify(this.data, null, 2))
+    renameSync(temp, this.file)
+  }
+}

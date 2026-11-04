@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#24252d"/>
+      <stop offset="1" stop-color="#111216"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffdc85"/>
+      <stop offset="1" stop-color="#df9f2e"/>
+    </linearGradient>
+    <linearGradient id="grip" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6e4120"/>
+      <stop offset="0.5" stop-color="#a1683a"/>
+      <stop offset="1" stop-color="#5f371a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <rect x="5" y="5" width="502" height="502" rx="111" fill="none" stroke="#f5c451" stroke-opacity="0.22" stroke-width="4"/>
+  <g transform="translate(0 -14)">
+    <rect x="229" y="238" width="54" height="166" rx="10" fill="url(#grip)"/>
+    <path d="M229 270 L283 254 M229 304 L283 288 M229 338 L283 322 M229 372 L283 356" stroke="#3f2410" stroke-width="7" stroke-linecap="round"/>
+    <rect x="214" y="396" width="84" height="32" rx="11" fill="url(#gold)"/>
+    <path d="M132 112 H380 L404 136 V222 L380 246 H132 L108 222 V136 Z" fill="url(#gold)"/>
+    <path d="M150 132 H362 L384 154 V204 L362 226 H150 L128 204 V154 Z" fill="none" stroke="#a8711a" stroke-opacity="0.55" stroke-width="6"/>
+    <path d="M278 126 L220 184 H254 L232 234 L298 168 H264 Z" fill="#15161b"/>
+  </g>
+</svg>

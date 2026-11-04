@@ -1,0 +1,18 @@
+appId: dev.mjolnir.app
+productName: Mjolnir
+directories:
+  output: release
+files:
+  - out/**
+  - resources/**
+asarUnpack:
+  - node_modules/node-pty/**
+npmRebuild: false
+win:
+  target: nsis
+  icon: resources/icon.ico
+linux:
+  icon: resources/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
