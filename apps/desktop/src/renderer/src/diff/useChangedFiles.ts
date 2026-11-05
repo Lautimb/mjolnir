@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Session } from './model'
+import type { Session } from '../sessions/model'
 
 const POLL_MS = 5000
 

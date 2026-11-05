@@ -51,6 +51,7 @@ export const es = {
     from: 'Desde',
     existsRemote: 'Existe en el remoto: se crea local siguiendo {branch}.',
     existsLocal: 'Ya existe localmente: se abre esa branch.',
+    invalidBranch: 'Ese nombre no es válido para una rama de git.',
     creating: 'Creando…',
     open: 'Abrir sesión',
     create: 'Crear sesión',

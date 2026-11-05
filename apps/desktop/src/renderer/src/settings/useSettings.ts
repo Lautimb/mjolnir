@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Settings } from '../../shared/settings'
+import type { Settings } from '../../../shared/settings'
 
 export type UpdateSettings = (patch: Partial<Settings>) => void
 

@@ -1,0 +1,116 @@
+@import 'tailwindcss';
+
+@custom-variant panel-right (&:where([data-panel='right'] *));
+
+@theme {
+  --color-*: initial;
+  --color-canvas: #111216;
+  --color-surface: #16171c;
+  --color-raised: #1c1d23;
+  --color-hover: #22232a;
+  --color-selected: #2a2b33;
+  --color-line: #23242b;
+  --color-line-strong: #31323b;
+  --color-fg: #e4e5e9;
+  --color-muted: #8d8f9a;
+  --color-subtle: #5f616c;
+  --color-accent: #f5c451;
+  --color-on-accent: #17140b;
+  --color-danger: #f0646a;
+  --color-success: #5fc88f;
+  --color-merged: #a77bf3;
+  --color-wsl: #e9773f;
+  --color-windows: #4aa3ff;
+  --color-posix: #5fc88f;
+  --color-close: #c42b1c;
+  --color-white: #fff;
+  --color-transparent: transparent;
+  --color-scrim: rgb(0 0 0 / 0.5);
+
+  --font-sans: Inter, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --text-2xs: 10px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 11px;
+  --text-xs--line-height: 1.45;
+  --text-sm: 12px;
+  --text-sm--line-height: 1.45;
+  --text-md: 13px;
+  --text-md--line-height: 1.45;
+  --text-lg: 15px;
+  --text-lg--line-height: 1.45;
+  --text-xl: 18px;
+  --text-xl--line-height: 1.45;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-popover: 0 10px 30px rgb(0 0 0 / 0.45), 0 0 0 1px var(--color-line-strong);
+
+  --spacing-titlebar: 36px;
+  --spacing-rail: 48px;
+  --spacing-sidebar: 272px;
+  --spacing-tabbar: 38px;
+  --spacing-statusbar: 24px;
+  --spacing-control: 28px;
+
+  --animate-spin: spin 900ms linear infinite;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font: var(--text-md) / 1.45 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    color-scheme: dark;
+  }
+
+  button:not(:disabled),
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 5px;
+    background: var(--color-line-strong) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-subtle);
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  .xterm .xterm-viewport {
+    background-color: var(--color-canvas);
+    scrollbar-width: none;
+  }
+}

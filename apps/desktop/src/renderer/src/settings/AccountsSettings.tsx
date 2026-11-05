@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import type { Account, DeviceCode } from '@mjolnir/core/browser'
-import type { ProviderInfo } from '../../shared/api'
-import { describeError, useI18n } from './i18n/I18nProvider'
+import type { ProviderInfo } from '../../../shared/api'
+import { describeError, useI18n } from '../i18n/I18nProvider'
+import { Avatar } from '../ui/Avatar'
+import { Button } from '../ui/Button'
+import { FormError, TextInput } from '../ui/fields'
+import { Description } from '../ui/Description'
+
+const line = 'flex flex-wrap items-center gap-2'
 
 type Mode = { kind: 'idle' } | { kind: 'token'; value: string } | { kind: 'device'; code: DeviceCode }
 
@@ -50,78 +56,79 @@ function ProviderAccount({ provider, account, onChange }: { provider: ProviderIn
   }
 
   return (
-    <div className="account">
-      <div className="account-header">
+    <div className="flex flex-col gap-2 border-b border-line py-3">
+      <div className={`${line} justify-between`}>
         <strong>{provider.displayName}</strong>
         {account ? (
-          <div className="account-identity">
-            {account.avatarUrl && <img className="avatar" src={account.avatarUrl} alt="" />}
+          <div className={line}>
+            <Avatar url={account.avatarUrl} />
             <span>{t('accounts.connectedAs', { login: account.login })}</span>
-            <span className="account-source">{t(`accounts.sources.${account.source}`)}</span>
-            <button className="button ghost" disabled={busy} onClick={() => run(() => accounts.disconnect(account.provider, account.host))}>
+            <span className="text-xs text-subtle">{t(`accounts.sources.${account.source}`)}</span>
+            <Button variant="ghost" disabled={busy} onClick={() => run(() => accounts.disconnect(account.provider, account.host))}>
               {t('accounts.disconnect')}
-            </button>
+            </Button>
           </div>
         ) : (
           mode.kind === 'idle' && (
-            <div className="account-actions">
+            <div className={line}>
               {provider.cli && provider.methods.includes('cli') && (
-                <button className="button" disabled={busy} onClick={() => run(() => accounts.connectCli(provider.id))}>
-                  {busy && <Loader2 size={13} className="spin" />}
+                <Button disabled={busy} onClick={() => run(() => accounts.connectCli(provider.id))}>
+                  {busy && <Loader2 size={13} className="animate-spin" />}
                   {t('accounts.useCli', { cli: provider.cli })}
-                </button>
+                </Button>
               )}
               {provider.methods.includes('device') && (
-                <button className="button primary" disabled={busy} onClick={startDevice}>
+                <Button variant="primary" disabled={busy} onClick={startDevice}>
                   {t('accounts.connectBrowser')}
-                </button>
+                </Button>
               )}
-              <button className="button ghost" disabled={busy} onClick={() => setMode({ kind: 'token', value: '' })}>
+              <Button variant="ghost" disabled={busy} onClick={() => setMode({ kind: 'token', value: '' })}>
                 {t('accounts.useToken')}
-              </button>
+              </Button>
             </div>
           )
         )}
       </div>
 
       {mode.kind === 'token' && (
-        <form className="account-token" onSubmit={saveToken}>
-          <input
+        <form className={line} onSubmit={saveToken}>
+          <TextInput
+            className="min-w-[220px] flex-1"
             autoFocus
             type="password"
             placeholder={t('accounts.tokenPlaceholder')}
             value={mode.value}
             onChange={(event) => setMode({ kind: 'token', value: event.target.value })}
           />
-          <button type="submit" className="button primary" disabled={busy || !mode.value.trim()}>
+          <Button type="submit" variant="primary" disabled={busy || !mode.value.trim()}>
             {t('accounts.save')}
-          </button>
-          <button type="button" className="button ghost" onClick={cancel}>
+          </Button>
+          <Button variant="ghost" onClick={cancel}>
             {t('common.cancel')}
-          </button>
-          <span className="setting-description">{t('accounts.tokenHint')}</span>
+          </Button>
+          <Description>{t('accounts.tokenHint')}</Description>
         </form>
       )}
 
       {mode.kind === 'device' && (
-        <div className="account-device">
+        <div className={line}>
           <span>{t('accounts.deviceCode', { provider: provider.displayName })}</span>
-          <code className="device-code">{mode.code.userCode}</code>
-          <button className="button" onClick={() => window.open(mode.code.verificationUri)}>
+          <code className="rounded-md bg-accent/12 px-3 py-1 font-mono text-lg tracking-[0.1em] text-accent">{mode.code.userCode}</code>
+          <Button onClick={() => window.open(mode.code.verificationUri)}>
             <ExternalLink size={13} />
             {t('accounts.openBrowser', { provider: provider.displayName })}
-          </button>
-          <span className="account-waiting">
-            <Loader2 size={13} className="spin" />
+          </Button>
+          <span className="flex items-center gap-1 text-sm text-muted">
+            <Loader2 size={13} className="animate-spin" />
             {t('accounts.waiting')}
           </span>
-          <button className="button ghost" onClick={cancel}>
+          <Button variant="ghost" onClick={cancel}>
             {t('common.cancel')}
-          </button>
+          </Button>
         </div>
       )}
 
-      {error !== null && <div className="form-error">{describeError(t, error)}</div>}
+      {error !== null && <FormError>{describeError(t, error)}</FormError>}
     </div>
   )
 }
@@ -143,7 +150,7 @@ export function AccountsSettings() {
 
   return (
     <>
-      <p className="setting-description">{t('accounts.description')}</p>
+      <Description>{t('accounts.description')}</Description>
       {providers.map((provider) => (
         <ProviderAccount
           key={provider.id}
@@ -152,7 +159,7 @@ export function AccountsSettings() {
           onChange={() => void refresh()}
         />
       ))}
-      <p className="setting-description">{t('accounts.morePlugins')}</p>
+      <Description>{t('accounts.morePlugins')}</Description>
     </>
   )
 }

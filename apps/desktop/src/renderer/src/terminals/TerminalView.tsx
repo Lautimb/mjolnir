@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import type { Settings } from '../../shared/settings'
+import type { Settings } from '../../../shared/settings'
+import { describeError, useI18n } from '../i18n/I18nProvider'
 import type { Tab } from './model'
 
 interface Props {
@@ -24,6 +25,8 @@ const theme = {
 }
 
 export function TerminalView({ tab, active, cursorStyle, cursorBlink, onExit }: Props) {
+  const { t } = useI18n()
+  const describe = useRef((error: unknown) => describeError(t, error))
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -65,7 +68,7 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, onExit }: 
         cwd: tab.cwd,
         initialInput: tab.initialInput,
       })
-      .catch((error: unknown) => term.write(`\x1b[31m${String(error)}\x1b[0m\r\n`))
+      .catch((error: unknown) => term.write(`\x1b[31m${describe.current(error)}\x1b[0m\r\n`))
 
     const observer = new ResizeObserver(() => {
       if (container.offsetWidth > 0 && container.offsetHeight > 0) fit.fit()
@@ -95,5 +98,5 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, onExit }: 
     termRef.current?.focus()
   }, [active])
 
-  return <div ref={containerRef} className={active ? 'terminal' : 'terminal hidden'} />
+  return <div ref={containerRef} hidden={!active} className="absolute inset-0 pt-2 pl-3" />
 }

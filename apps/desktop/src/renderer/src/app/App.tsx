@@ -1,34 +1,32 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { X } from 'lucide-react'
-import { AddRepoDialog } from './AddRepoDialog'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
-import { Launchpad } from './Launchpad'
+import { appErrorCode } from '../../../shared/errors'
+import type { Settings } from '../../../shared/settings'
+import { useChangedFiles } from '../diff/useChangedFiles'
+import { describeError, useI18n } from '../i18n/I18nProvider'
+import { AddRepoDialog } from '../sessions/AddRepoDialog'
+import { repoKeyPrefix, SCRATCH_KEY, sessionKey } from '../sessions/model'
+import { Sidebar } from '../sessions/Sidebar'
+import { useSessions } from '../sessions/useSessions'
+import { useWorkspace } from '../sessions/useWorkspace'
+import { SettingsView } from '../settings/SettingsView'
+import type { UpdateSettings } from '../settings/useSettings'
+import { Launchpad } from '../terminals/Launchpad'
+import type { Agent } from '../terminals/model'
+import { TabBar } from '../terminals/TabBar'
+import { TerminalView } from '../terminals/TerminalView'
+import { useTerminalTabs } from '../terminals/useTerminalTabs'
+import { cx } from '../ui/cx'
+import { LAYOUTS, MAIN_COLUMN } from './layout'
 import { Rail, type View } from './Rail'
-import { SettingsView } from './SettingsView'
-import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
-import { TabBar } from './TabBar'
-import { TerminalView } from './TerminalView'
 import { TitleBar } from './TitleBar'
-import { describeError, useI18n } from './i18n/I18nProvider'
-import { useChangedFiles } from './useChangedFiles'
-import type { UpdateSettings } from './useSettings'
-import { useWorkspace } from './useWorkspace'
-import { appErrorCode } from '../../shared/errors'
-import type { Settings } from '../../shared/settings'
-import {
-  SCRATCH_KEY,
-  sessionKey,
-  worktreeSession,
-  type Agent,
-  type Session,
-  type Tab,
-} from './model'
+import { Toast } from './Toast'
+import { useNotice } from './useNotice'
 
-const NOTICE_MS = 8000
+const DiffView = lazy(() => import('../diff/DiffView').then((module) => ({ default: module.DiffView })))
+const PullsView = lazy(() => import('../pulls/PullsView').then((module) => ({ default: module.PullsView })))
 
-const DiffView = lazy(() => import('./DiffView').then((module) => ({ default: module.DiffView })))
-const PullsView = lazy(() => import('./pulls/PullsView').then((module) => ({ default: module.PullsView })))
 
 interface Props {
   settings: Settings
@@ -38,67 +36,32 @@ interface Props {
 export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const { t } = useI18n()
   const workspace = useWorkspace()
-  const [view, setView] = useState<View>('sessions')
   const { repos, worktrees } = workspace
+  const sessions = useSessions(repos, worktrees)
+  const terminals = useTerminalTabs()
+  const [view, setView] = useState<View>('sessions')
   const [profiles, setProfiles] = useState<TerminalProfile[]>([])
-  const [tabs, setTabs] = useState<Tab[]>([])
   const [activeKey, setActiveKey] = useState(SCRATCH_KEY)
-  const [activeTabs, setActiveTabs] = useState<Record<string, string>>({})
-  const [notice, setNotice] = useState<string | null>(null)
   const [addingRepo, setAddingRepo] = useState(false)
+  const [notice, setNotice] = useNotice()
 
   useEffect(() => {
     void window.mjolnir.profiles.list().then(setProfiles)
   }, [])
 
-  useEffect(() => {
-    if (!notice) return
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS)
-    return () => clearTimeout(timer)
-  }, [notice])
-
-  const sessions = useMemo(() => {
-    const map = new Map<string, Session>()
-    map.set(SCRATCH_KEY, { key: SCRATCH_KEY, host: window.mjolnir.appHost, title: t('sidebar.scratch') })
-    for (const repo of repos) {
-      for (const worktree of worktrees[repo.id] ?? []) {
-        const session = worktreeSession(repo, worktree)
-        map.set(session.key, session)
-      }
-    }
-    return map
-  }, [repos, worktrees, t])
-
   const session = sessions.get(activeKey) ?? sessions.get(SCRATCH_KEY)!
   const changes = useChangedFiles(session)
-  const sessionProfiles =
-    session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
-  const sessionTabs = tabs.filter((tab) => tab.sessionKey === session.key)
-  const storedActive = activeTabs[session.key]
-  const activeTabId = sessionTabs.some((tab) => tab.id === storedActive) ? storedActive : sessionTabs.at(-1)?.id
-
-  const openTab = (tab: Omit<Tab, 'id' | 'sessionKey'>) => {
-    const id = crypto.randomUUID()
-    setTabs((current) => [...current, { ...tab, id, sessionKey: session.key }])
-    setActiveTabs((current) => ({ ...current, [session.key]: id }))
-  }
+  const sessionProfiles = session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
+  const { tabs: sessionTabs, activeId: activeTabId } = terminals.forSession(session.key)
 
   const openShell = (profile: TerminalProfile) =>
-    openTab({ profile, label: profile.label, kind: 'shell', cwd: session.cwd })
+    terminals.open(session.key, { profile, label: profile.label, kind: 'shell', cwd: session.cwd })
 
   const openAgent = (agent: Agent) => {
     const profile = sessionProfiles[0]
     if (!profile) return setNotice(t('errors.noTerminal'))
-    openTab({ profile, label: agent.label, kind: 'agent', cwd: session.cwd, initialInput: `${agent.command}\r` })
+    terminals.open(session.key, { profile, label: agent.label, kind: 'agent', cwd: session.cwd, initialInput: `${agent.command}\r` })
   }
-
-  const closeTabs = useCallback((predicate: (tab: Tab) => boolean) => {
-    setTabs((current) => current.filter((tab) => !predicate(tab)))
-  }, [])
-
-  const markExited = useCallback((id: string, exitCode: number) => {
-    setTabs((current) => current.map((tab) => (tab.id === id ? { ...tab, exitCode } : tab)))
-  }, [])
 
   const addRepo = async (request: () => Promise<Repo | null>) => {
     const repo = await workspace.addRepo(request)
@@ -112,8 +75,8 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
 
   const removeRepo = async (repo: Repo) => {
     if (!confirm(t('sessions.confirmRemoveRepo', { name: repo.name }))) return
-    const prefix = `${repo.id}::`
-    closeTabs((tab) => tab.sessionKey.startsWith(prefix))
+    const prefix = repoKeyPrefix(repo)
+    terminals.close((tab) => tab.sessionKey.startsWith(prefix))
     if (activeKey.startsWith(prefix)) setActiveKey(SCRATCH_KEY)
     await workspace.removeRepo(repo.id)
   }
@@ -127,7 +90,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     const name = worktree.branch ?? worktree.path
     if (!confirm(t('sessions.confirmRemove', { name }))) return
     const key = sessionKey(repo, worktree)
-    closeTabs((tab) => tab.sessionKey === key)
+    terminals.close((tab) => tab.sessionKey === key)
     if (activeKey === key) {
       const main = worktrees[repo.id]?.find((wt) => wt.main)
       setActiveKey(main ? sessionKey(repo, main) : SCRATCH_KEY)
@@ -142,15 +105,19 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   }
 
   return (
-    <div className={`app panel-${settings.panelPosition} view-${view}`}>
+    <div
+      data-panel={settings.panelPosition}
+      className={cx('grid h-full grid-rows-[var(--spacing-titlebar)_minmax(0,1fr)_var(--spacing-statusbar)]', LAYOUTS[settings.panelPosition])}
+    >
       <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} />
       <Rail view={view} changes={changes} onChange={setView} />
       {view === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
       <Sidebar
+        hidden={view === 'settings'}
         repos={repos}
         worktrees={worktrees}
         errors={workspace.errors}
-        tabs={tabs}
+        tabs={terminals.tabs}
         activeKey={session.key}
         onSelect={(key) => {
           setActiveKey(key)
@@ -161,39 +128,34 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
         onCreateSession={createSession}
         onRemoveSession={removeSession}
       />
-      <section className="workspace">
+      <section hidden={view !== 'sessions'} className={MAIN_COLUMN}>
         <TabBar
           tabs={sessionTabs}
           activeId={activeTabId}
           profiles={sessionProfiles}
-          onActivate={(id) => setActiveTabs((current) => ({ ...current, [session.key]: id }))}
-          onClose={(id) => closeTabs((tab) => tab.id === id)}
+          onActivate={(id) => terminals.activate(session.key, id)}
+          onClose={(id) => terminals.close((tab) => tab.id === id)}
           onOpenShell={openShell}
           onOpenAgent={openAgent}
         />
-        <div className="terminals">
-          {tabs.map((tab) => (
+        <div className="relative min-h-0 flex-1">
+          {terminals.tabs.map((tab) => (
             <TerminalView
               key={tab.id}
               tab={tab}
               cursorStyle={settings.terminalCursorStyle}
               cursorBlink={settings.terminalCursorBlink}
               active={view === 'sessions' && tab.sessionKey === session.key && tab.id === activeTabId}
-              onExit={(code) => markExited(tab.id, code)}
+              onExit={(code) => terminals.markExited(tab.id, code)}
             />
           ))}
           {sessionTabs.length === 0 && (
-            <Launchpad
-              session={session}
-              defaultProfile={sessionProfiles[0]}
-              onOpenShell={openShell}
-              onOpenAgent={openAgent}
-            />
+            <Launchpad session={session} defaultProfile={sessionProfiles[0]} onOpenShell={openShell} onOpenAgent={openAgent} />
           )}
         </div>
       </section>
       {view === 'diff' && (
-        <Suspense fallback={<section className="diff-view" />}>
+        <Suspense fallback={<section className={MAIN_COLUMN} />}>
           <DiffView
             session={session}
             sideBySide={settings.diffSideBySide}
@@ -202,20 +164,13 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
         </Suspense>
       )}
       {view === 'pulls' && (
-        <Suspense fallback={<section className="pulls-view" />}>
+        <Suspense fallback={<section className={MAIN_COLUMN} />}>
           <PullsView session={session} sideBySide={settings.diffSideBySide} onOpenSettings={() => setView('settings')} />
         </Suspense>
       )}
       <StatusBar session={session} changes={changes} onOpenDiff={() => setView('diff')} />
       {addingRepo && <AddRepoDialog existing={repos} onAdd={addRepo} onClose={() => setAddingRepo(false)} />}
-      {notice && (
-        <div className="toast" role="alert">
-          <span>{notice}</span>
-          <button className="icon-button" aria-label={t('common.close')} onClick={() => setNotice(null)}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </div>
   )
 }

@@ -52,6 +52,7 @@ export const en: Messages = {
     from: 'From',
     existsRemote: 'Exists on the remote: a local branch tracking {branch} will be created.',
     existsLocal: 'Already exists locally: that branch will be opened.',
+    invalidBranch: "That name isn't a valid git branch.",
     creating: 'Creating…',
     open: 'Open session',
     create: 'Create session',

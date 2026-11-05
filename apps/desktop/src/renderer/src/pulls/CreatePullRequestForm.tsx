@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { shortName, type BranchList, type PullRequestSummary } from '@mjolnir/core/browser'
-import { BranchPicker } from '../BranchPicker'
 import { describeError, useI18n } from '../i18n/I18nProvider'
+import { BranchPicker } from '../sessions/BranchPicker'
+import { Button } from '../ui/Button'
+import { Field, FormActions, FormError, TextArea, TextInput } from '../ui/fields'
 
 interface Props {
   repoId: string
@@ -60,37 +62,34 @@ export function CreatePullRequestForm({ repoId, branch, worktreePath, onCreated,
   }
 
   return (
-    <form className="pull-detail pull-create" onSubmit={submit}>
-      <h2>{t('pulls.create.title')}</h2>
-      <code>
+    <form className="flex max-w-[760px] min-h-0 min-w-0 flex-col gap-3 overflow-y-auto px-6 py-4" onSubmit={submit}>
+      <h2 className="text-xl">{t('pulls.create.title')}</h2>
+      <code className="font-mono text-sm text-muted">
         {branch} → {baseBranch}
       </code>
-      <label className="field">
-        {t('pulls.create.titleLabel')}
-        <input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} />
-      </label>
-      <div className="field">
-        {t('pulls.create.base')}
+      <Field label={t('pulls.create.titleLabel')}>
+        <TextInput autoFocus value={title} onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+      <Field as="div" label={t('pulls.create.base')}>
         <BranchPicker list={branches} value={selectedBase} refreshing={fetching} onChange={setBase} onRefresh={refresh} />
-      </div>
-      <label className="field">
-        {t('pulls.create.body')}
-        <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} />
-      </label>
-      <label className="checkbox">
+      </Field>
+      <Field label={t('pulls.create.body')}>
+        <TextArea value={body} onChange={(event) => setBody(event.target.value)} rows={10} />
+      </Field>
+      <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={draft} onChange={(event) => setDraft(event.target.checked)} />
         {t('pulls.create.draft')}
       </label>
-      <p className="setting-description">{t('pulls.create.pushHint')}</p>
-      {error !== null && <div className="form-error">{describeError(t, error)}</div>}
-      <div className="form-actions">
-        <button type="button" className="button ghost" onClick={onCancel}>
+      <p className="text-sm text-muted">{t('pulls.create.pushHint')}</p>
+      {error !== null && <FormError>{describeError(t, error)}</FormError>}
+      <FormActions>
+        <Button variant="ghost" onClick={onCancel}>
           {t('common.cancel')}
-        </button>
-        <button type="submit" className="button primary" disabled={busy || !title.trim()}>
+        </Button>
+        <Button type="submit" variant="primary" disabled={busy || !title.trim()}>
           {busy ? t('pulls.create.submitting') : t('pulls.create.submit')}
-        </button>
-      </div>
+        </Button>
+      </FormActions>
     </form>
   )
 }

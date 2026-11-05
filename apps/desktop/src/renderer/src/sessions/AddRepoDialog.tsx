@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { CornerDownLeft, FolderGit2, FolderOpen, FolderSearch, Loader2 } from 'lucide-react'
 import { hostKey, sameHost, type DiscoveredRepos, type Host, type Repo } from '@mjolnir/core/browser'
-import { describeError, hostLabel, useI18n } from './i18n/I18nProvider'
+import { describeError, hostLabel, useI18n } from '../i18n/I18nProvider'
+import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
+import { popover } from '../ui/Menu'
+import { Segmented } from '../ui/Segmented'
 
 type Discovery = { status: 'loading' } | { status: 'ready'; result: DiscoveredRepos } | { status: 'error'; error: unknown }
 
@@ -18,6 +23,10 @@ interface Props {
 }
 
 const MAX_ITEMS = 50
+
+function Hint({ error, children }: { error?: boolean; children: ReactNode }) {
+  return <div className={cx('flex items-center gap-2 p-3 text-sm', error ? 'text-danger' : 'text-muted')}>{children}</div>
+}
 
 function looksLikePath(query: string): boolean {
   return /^(\/|~\/|[a-zA-Z]:[\\/]|\\\\)/.test(query)
@@ -100,77 +109,81 @@ export function AddRepoDialog({ existing, onAdd, onClose }: Props) {
   }
 
   return (
-    <div className="overlay" onMouseDown={onClose}>
-      <div className="dialog" role="dialog" aria-label={t('addRepo.title')} onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
-        <div className="dialog-header">
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-scrim px-4 pt-[12vh] pb-4" onMouseDown={onClose}>
+      <div
+        role="dialog"
+        aria-label={t('addRepo.title')}
+        className={cx(popover, 'flex max-h-full w-[min(620px,100%)] flex-col overflow-hidden rounded-lg')}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        <div className="flex items-center justify-between gap-3 px-4 py-3 font-semibold">
           <span>{t('addRepo.title')}</span>
-          {hosts.length > 1 && (
-            <div className="segmented">
-              {hosts.map((option) => (
-                <button
-                  key={hostKey(option)}
-                  className={host && sameHost(host, option) ? 'selected' : undefined}
-                  onClick={() => setHost(option)}
-                >
-                  {hostLabel(t, option)}
-                </button>
-              ))}
-            </div>
+          {hosts.length > 1 && host && (
+            <Segmented
+              value={hostKey(host)}
+              options={hosts.map((option) => ({ value: hostKey(option), label: hostLabel(t, option) }))}
+              onChange={(key) => setHost(hosts.find((option) => hostKey(option) === key) ?? null)}
+            />
           )}
         </div>
 
-        <div className="dialog-search">
+        <div className="mx-3 flex items-center gap-2 rounded-md border border-line-strong bg-canvas px-3 text-subtle focus-within:border-accent">
           <FolderSearch size={16} />
           <input
+            className="h-[38px] flex-1 bg-transparent text-lg text-fg outline-none"
             autoFocus
             placeholder={host?.kind === 'windows' ? t('addRepo.placeholderWindows') : t('addRepo.placeholder')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             spellCheck={false}
           />
-          {busy && <Loader2 size={15} className="spin" />}
+          {busy && <Loader2 size={15} className="animate-spin" />}
         </div>
 
-        <div className="dialog-list">
+        <div className="max-h-[380px] min-h-[120px] overflow-y-auto p-2">
           {discovery?.status === 'loading' && (
-            <div className="dialog-hint">
-              <Loader2 size={14} className="spin" /> {t('addRepo.searching', { host: host ? hostLabel(t, host) : '' })}
-            </div>
+            <Hint>
+              <Loader2 size={14} className="animate-spin" /> {t('addRepo.searching', { host: host ? hostLabel(t, host) : '' })}
+            </Hint>
           )}
-          {discovery?.status === 'error' && <div className="dialog-hint error">{describeError(t, discovery.error)}</div>}
+          {discovery?.status === 'error' && <Hint error>{describeError(t, discovery.error)}</Hint>}
           {discovery?.status === 'ready' && items.length === 0 && (
-            <div className="dialog-hint">
+            <Hint>
               {host?.kind === 'windows'
                 ? t('addRepo.windowsNoScan')
                 : query
                   ? t('addRepo.noMatch')
                   : t('addRepo.noneFound', { path: shorten(home) || '~' })}
-            </div>
+            </Hint>
           )}
-          {items.map((item, index) => (
-            <button
-              key={`${item.typed}:${item.path}`}
-              className={`dialog-item${index === selected ? ' selected' : ''}`}
-              onMouseEnter={() => setSelected(index)}
-              onClick={() => add(item)}
-            >
-              <FolderGit2 size={15} />
-              <span className="dialog-item-name">{item.typed ? t('addRepo.addPath') : item.name}</span>
-              <span className="dialog-item-path">{shorten(item.path)}</span>
-              {isAdded(item.path) && <span className="dialog-item-badge">{t('addRepo.added')}</span>}
-              {index === selected && <CornerDownLeft size={13} className="dialog-item-enter" />}
-            </button>
-          ))}
+          {items.map((item, index) => {
+            const isSelected = index === selected
+            return (
+              <button
+                key={`${item.typed}:${item.path}`}
+                className={cx('flex h-[34px] w-full items-center gap-3 rounded-md px-3 text-left', isSelected ? 'bg-selected text-fg' : 'text-muted')}
+                onMouseEnter={() => setSelected(index)}
+                onClick={() => add(item)}
+              >
+                <FolderGit2 size={15} className={cx('flex-none', isSelected ? 'text-accent' : 'text-subtle')} />
+                <span className="max-w-[40%] flex-none truncate font-medium text-fg">{item.typed ? t('addRepo.addPath') : item.name}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-sm">{shorten(item.path)}</span>
+                {isAdded(item.path) && <Badge tone="success">{t('addRepo.added')}</Badge>}
+                {isSelected && <CornerDownLeft size={13} className="flex-none text-subtle" />}
+              </button>
+            )
+          })}
         </div>
 
-        {error && <div className="dialog-error">{error}</div>}
+        {error && <div className="px-4 pb-2 text-sm break-words text-danger">{error}</div>}
 
-        <div className="dialog-footer">
-          <button className="button ghost" disabled={!host || busy} onClick={() => host && void run(() => window.mjolnir.repos.browse(host, t('addRepo.title')))}>
+        <div className="flex items-center justify-between gap-3 border-t border-line-strong px-3 py-2">
+          <Button variant="ghost" disabled={!host || busy} onClick={() => host && void run(() => window.mjolnir.repos.browse(host, t('addRepo.title')))}>
             <FolderOpen size={14} />
             {t('addRepo.browse')}
-          </button>
-          <span className="dialog-keys">{t('addRepo.keys')}</span>
+          </Button>
+          <span className="text-xs text-subtle">{t('addRepo.keys')}</span>
         </div>
       </div>
     </div>

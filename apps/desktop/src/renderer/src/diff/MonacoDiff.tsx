@@ -55,5 +55,5 @@ export function MonacoDiff({ path, original, modified, sideBySide }: Props) {
     editorRef.current?.updateOptions({ renderSideBySide: sideBySide })
   }, [sideBySide])
 
-  return <div ref={containerRef} className="monaco-diff" />
+  return <div ref={containerRef} className="absolute inset-0" />
 }
