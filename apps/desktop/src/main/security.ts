@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { app, session, shell, type WebContents, type WebFrameMain } from 'electron'
+import { allowsFrameNavigation } from './plugins/protocol'
 
 const EXTERNAL_PROTOCOLS = new Set(['https:', 'http:'])
 const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write'])
@@ -42,6 +43,9 @@ function lockDown(contents: WebContents): void {
   })
   contents.on('will-navigate', (event, url) => {
     if (!isAppUrl(url)) event.preventDefault()
+  })
+  contents.on('will-frame-navigate', (event) => {
+    if (!event.isMainFrame && !allowsFrameNavigation(event.frame?.url, event.url)) event.preventDefault()
   })
   contents.on('will-attach-webview', (event) => event.preventDefault())
 }

@@ -1,7 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import type { Repo } from '@mjolnir/core'
 import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
+import { readJson, writeJsonAtomic } from './json-file'
 import { settings as settingsSchema } from './schemas'
 
 interface StoreData {
@@ -52,22 +51,15 @@ export class Store {
   }
 
   private load(): StoreData {
-    try {
-      const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<StoreData>
-      return {
-        repos: parsed.repos ?? [],
-        settings: { ...DEFAULT_SETTINGS, ...settingsSchema.partial().catch({}).parse(parsed.settings) },
-        sessionBases: parsed.sessionBases ?? {},
-      }
-    } catch {
-      return { repos: [], settings: DEFAULT_SETTINGS, sessionBases: {} }
+    const parsed = (readJson(this.file) ?? {}) as Partial<StoreData>
+    return {
+      repos: parsed.repos ?? [],
+      settings: { ...DEFAULT_SETTINGS, ...settingsSchema.partial().catch({}).parse(parsed.settings) },
+      sessionBases: parsed.sessionBases ?? {},
     }
   }
 
   private save(): void {
-    mkdirSync(dirname(this.file), { recursive: true })
-    const temp = `${this.file}.tmp`
-    writeFileSync(temp, JSON.stringify(this.data, null, 2))
-    renameSync(temp, this.file)
+    writeJsonAtomic(this.file, this.data)
   }
 }

@@ -40,7 +40,8 @@ apps/desktop          Electron
   src/shared          contratos entre main y renderer: api, settings, errors, locales
   src/renderer/src    React por feature: app, sessions, terminals, diff, pulls, settings, ui, i18n
 packages/core         dominio sin Electron: hosts, perfiles, git, branches, diff, refs, proveedores
-plugins/              (próximamente)
+packages/plugin-sdk   API para plugins: manifest, protocolo, cliente, permisos, tema
+plugins/              plugins first-party (hello es el ejemplo mínimo, http-client, azure-devops)
 docs/                 este documento
 ```
 
@@ -73,11 +74,13 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 ## Próximos pasos
 
-### 1. Sistema de plugins (siguiente)
+### 1. Sistema de plugins (en curso)
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-A definir en el diseño (primer entregable: un documento en `docs/plugins.md` antes de codear):
+Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`), fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops`) y fase 4 (instalación de `.mjp`, actualizaciones con permisos nuevos, `mjolnir-plugin pack`, fijar vistas en el rail). Sigue la fase 5 (catálogo y firma), que depende de decidir dónde se publica.
+
+Lo que cubre el diseño:
 
 - **Formato del paquete**: manifest (`id`, versión, versión mínima de Mjolnir, contribuciones, permisos) + bundle de main y/o renderer.
 - **Puntos de contribución**: proveedores de cuentas/PRs, vistas en el rail, secciones de ajustes, comandos.
@@ -87,6 +90,8 @@ A definir en el diseño (primer entregable: un documento en `docs/plugins.md` an
 
 ### 2. Azure DevOps como primer plugin
 
+Cuenta y PRs hechos en `plugins/azure-devops` (fase 3 de plugins). Falta probarlo contra una organización real y Boards.
+
 - Cuenta (PAT y, si aplica, login con Microsoft).
 - PRs: implementar `PullRequestProvider` para Azure Repos (`matchRemote` para `dev.azure.com` y `*.visualstudio.com`).
 - Boards: vista de user stories del tablero/iteración, con link a la sesión o branch.
@@ -94,7 +99,7 @@ A definir en el diseño (primer entregable: un documento en `docs/plugins.md` an
 ### 3. Más plugins
 
 - GitLab (cuenta + PRs/MRs). **∥**
-- Cliente HTTP tipo Postman (colecciones por repo, entornos, historial). **∥**
+- Cliente HTTP: hecho como plugin (`plugins/http-client`). Pendiente: variables secretas en los entornos, importar de Postman/OpenAPI, cancelar un request en curso.
 
 ### PRs v2 **∥**
 

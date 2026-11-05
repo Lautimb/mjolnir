@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@mjolnir/core": "workspace:*",
+    "@mjolnir/plugin-sdk": "workspace:*",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",

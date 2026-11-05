@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { MjolnirApi } from '../shared/api'
+import { PLUGIN_PORT_MESSAGE, type PluginPortMessage } from '../shared/plugins'
 
 function subscribe<T extends unknown[]>(channel: string, listener: (...args: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, ...args: unknown[]) => listener(...(args as T))
@@ -70,6 +71,19 @@ const api: MjolnirApi = {
     compare: (repoId, path, mode) => ipcRenderer.invoke('diff:compare', repoId, path, mode),
     file: (repoId, path, from, change) => ipcRenderer.invoke('diff:file', repoId, path, from, change),
   },
+  plugins: {
+    list: () => ipcRenderer.invoke('plugins:list'),
+    addFolder: (title) => ipcRenderer.invoke('plugins:addFolder', title),
+    installFile: (title, filterName) => ipcRenderer.invoke('plugins:installFile', title, filterName),
+    applyUpdate: (id, approved) => ipcRenderer.invoke('plugins:applyUpdate', id, approved),
+    discardUpdate: (id) => ipcRenderer.invoke('plugins:discardUpdate', id),
+    enable: (id, approved) => ipcRenderer.invoke('plugins:enable', id, approved),
+    disable: (id) => ipcRenderer.invoke('plugins:disable', id),
+    remove: (id) => ipcRenderer.invoke('plugins:remove', id),
+    connect: (id, nonce, role) => ipcRenderer.send('plugins:connect', id, nonce, role),
+    onChange: (listener) => subscribe('plugins:changed', listener),
+    onBackground: (listener) => subscribe('plugins:background', listener),
+  },
   pty: {
     spawn: (request) => ipcRenderer.invoke('pty:spawn', request),
     write: (id, data) => ipcRenderer.send('pty:write', id, data),
@@ -79,5 +93,9 @@ const api: MjolnirApi = {
     onExit: (listener) => subscribe('pty:exit', listener),
   },
 }
+
+ipcRenderer.on('plugins:port', (event, { nonce, ok }: { nonce: string; ok: boolean }) => {
+  window.postMessage({ type: PLUGIN_PORT_MESSAGE, nonce, ok } satisfies PluginPortMessage, '*', event.ports)
+})
 
 contextBridge.exposeInMainWorld('mjolnir', api)

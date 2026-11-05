@@ -1,0 +1,21 @@
+{
+  "name": "Hola",
+  "description": "Plugin de ejemplo que usa toda la API: storage, secretos, HTTP y notificaciones.",
+  "view": "Hola",
+  "title": "Hola desde un plugin",
+  "intro": "Este plugin corre aislado en su propio origen y le pide todo a Mjolnir.",
+  "storage": "Storage",
+  "count": "Contaste {count} veces",
+  "increment": "Sumar",
+  "secrets": "Secretos",
+  "secretPlaceholder": "Un valor secreto",
+  "save": "Guardar",
+  "secretSaved": "Hay un secreto guardado ({length} caracteres).",
+  "secretEmpty": "No hay ningún secreto guardado.",
+  "network": "Red",
+  "fetch": "Pedir una frase a api.github.com",
+  "blocked": "Probar un sitio sin permiso",
+  "notify": "Notificar",
+  "notice": "Hola desde el plugin",
+  "openDocs": "Abrir la API de GitHub"
+}

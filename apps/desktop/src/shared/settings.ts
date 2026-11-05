@@ -6,6 +6,7 @@ export interface Settings {
   terminalCursorStyle: 'block' | 'bar' | 'underline'
   terminalCursorBlink: boolean
   diffSideBySide: boolean
+  hiddenPluginViews: string[]
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   terminalCursorStyle: 'bar',
   terminalCursorBlink: true,
   diffSideBySide: true,
+  hiddenPluginViews: [],
 }
 
 export const TITLEBAR_HEIGHT = 36

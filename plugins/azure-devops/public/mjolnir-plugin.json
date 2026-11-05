@@ -1,0 +1,36 @@
+{
+  "id": "azure-devops",
+  "version": "0.1.0",
+  "engines": { "mjolnir": ">=0.1.0", "api": 1 },
+  "name": "Azure DevOps",
+  "description": "%description%",
+  "locales": { "es": "locales/es.json", "en": "locales/en.json" },
+  "background": "background.html",
+  "contributes": {
+    "providers": [
+      {
+        "id": "azure-devops",
+        "displayName": "Azure DevOps",
+        "defaultHost": "dev.azure.com",
+        "remotes": [
+          { "host": "dev.azure.com", "path": "{org}/{project}/_git/{repo}", "repo": { "owner": "{org}/{project}", "name": "{repo}" } },
+          { "host": "ssh.dev.azure.com", "path": "v3/{org}/{project}/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } },
+          { "host": "{org}.visualstudio.com", "path": "{project}/_git/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } },
+          { "host": "{org}.visualstudio.com", "path": "DefaultCollection/{project}/_git/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } },
+          { "host": "vs-ssh.visualstudio.com", "path": "v3/{org}/{project}/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } }
+        ],
+        "auth": {
+          "token": true,
+          "cli": {
+            "command": "az",
+            "args": ["account", "get-access-token", "--resource", "499b84ac-1321-427f-aa17-267ca6975798", "--query", "accessToken", "-o", "tsv"]
+          }
+        },
+        "pulls": { "refspec": "refs/pull/{number}/merge" }
+      }
+    ]
+  },
+  "permissions": {
+    "network": ["https://dev.azure.com", "https://app.vssps.visualstudio.com"]
+  }
+}

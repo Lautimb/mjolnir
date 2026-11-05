@@ -82,9 +82,11 @@ function ProviderAccount({ provider, account, onChange }: { provider: ProviderIn
                   {t('accounts.connectBrowser')}
                 </Button>
               )}
-              <Button variant="ghost" disabled={busy} onClick={() => setMode({ kind: 'token', value: '' })}>
-                {t('accounts.useToken')}
-              </Button>
+              {provider.methods.includes('token') && (
+                <Button variant="ghost" disabled={busy} onClick={() => setMode({ kind: 'token', value: '' })}>
+                  {t('accounts.useToken')}
+                </Button>
+              )}
             </div>
           )
         )}
@@ -146,6 +148,7 @@ export function AccountsSettings() {
 
   useEffect(() => {
     void refresh()
+    return window.mjolnir.plugins.onChange(() => void refresh())
   }, [refresh])
 
   return (

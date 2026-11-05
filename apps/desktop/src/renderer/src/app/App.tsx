@@ -1,9 +1,15 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
+import { readTheme, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { appErrorCode } from '../../../shared/errors'
 import type { Settings } from '../../../shared/settings'
 import { useChangedFiles } from '../diff/useChangedFiles'
 import { describeError, useI18n } from '../i18n/I18nProvider'
+import { pluginText, pluginUrl, pluginViews, touch, type PluginViewKey } from '../plugins/model'
+import { PluginBackgrounds } from '../plugins/PluginBackgrounds'
+import { PluginFrame } from '../plugins/PluginFrame'
+import { PluginsView } from '../plugins/PluginsView'
+import { usePlugins } from '../plugins/usePlugins'
 import { AddRepoDialog } from '../sessions/AddRepoDialog'
 import { repoKeyPrefix, SCRATCH_KEY, sessionKey } from '../sessions/model'
 import { Sidebar } from '../sessions/Sidebar'
@@ -18,7 +24,7 @@ import { TerminalView } from '../terminals/TerminalView'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
 import { cx } from '../ui/cx'
 import { LAYOUTS, MAIN_COLUMN } from './layout'
-import { Rail, type View } from './Rail'
+import { Rail, type RailPluginView, type View } from './Rail'
 import { StatusBar } from './StatusBar'
 import { TitleBar } from './TitleBar'
 import { Toast } from './Toast'
@@ -34,7 +40,7 @@ interface Props {
 }
 
 export function App({ settings, onSettingsChange: updateSettings }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const workspace = useWorkspace()
   const { repos, worktrees } = workspace
   const sessions = useSessions(repos, worktrees)
@@ -43,14 +49,50 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const [profiles, setProfiles] = useState<TerminalProfile[]>([])
   const [activeKey, setActiveKey] = useState(SCRATCH_KEY)
   const [addingRepo, setAddingRepo] = useState(false)
-  const [notice, setNotice] = useNotice()
+  const { notice, show: setNotice, dismiss: dismissNotice } = useNotice()
+  const { plugins } = usePlugins()
+  const [mountedViews, setMountedViews] = useState<PluginViewKey[]>([])
 
   useEffect(() => {
     void window.mjolnir.profiles.list().then(setProfiles)
   }, [])
 
+  const views = useMemo(() => pluginViews(plugins), [plugins])
+  const railViews = useMemo<RailPluginView[]>(
+    () =>
+      views
+        .filter(({ key }) => !settings.hiddenPluginViews.includes(key))
+        .map(({ key, plugin, view: entry }) => ({
+          key,
+          title: pluginText(plugin, entry.title, locale),
+          iconUrl: entry.icon ? pluginUrl(plugin, entry.icon) : null,
+        })),
+    [views, locale, settings.hiddenPluginViews],
+  )
+  const pluginContext = useMemo<Omit<PluginContext, 'session'>>(() => ({ locale, theme: readTheme(getComputedStyle(document.documentElement)) }), [locale])
+  const notifyFromPlugin = useCallback((message: string, kind: NotifyKind) => setNotice(message, kind === 'error' ? 'danger' : 'info'), [setNotice])
+
+  useEffect(() => {
+    const available = new Set(views.map((entry) => entry.key))
+    setMountedViews((keys) => keys.filter((key) => available.has(key)))
+    setView((current) => (current.startsWith('plugin:') && !available.has(current as PluginViewKey) ? 'sessions' : current))
+  }, [views])
+
+  const changeView = (next: View) => {
+    if (next.startsWith('plugin:')) setMountedViews((keys) => touch(keys, next as PluginViewKey))
+    setView(next)
+  }
+
   const session = sessions.get(activeKey) ?? sessions.get(SCRATCH_KEY)!
   const changes = useChangedFiles(session)
+  const { repo: sessionRepo, worktree: sessionWorktree } = session
+  const pluginSession = useMemo<WorkspaceSession | null>(
+    () =>
+      sessionRepo && sessionWorktree
+        ? { repoId: sessionRepo.id, worktree: sessionWorktree.path, repoName: sessionRepo.name, branch: sessionWorktree.branch }
+        : null,
+    [sessionRepo, sessionWorktree],
+  )
   const sessionProfiles = session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
   const { tabs: sessionTabs, activeId: activeTabId } = terminals.forSession(session.key)
 
@@ -110,10 +152,18 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       className={cx('grid h-full grid-rows-[var(--spacing-titlebar)_minmax(0,1fr)_var(--spacing-statusbar)]', LAYOUTS[settings.panelPosition])}
     >
       <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} />
-      <Rail view={view} changes={changes} onChange={setView} />
+      <Rail view={view} changes={changes} pluginViews={railViews} onChange={changeView} />
       {view === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
+      {view === 'plugins' && (
+        <PluginsView
+          plugins={plugins}
+          hiddenViews={settings.hiddenPluginViews}
+          onHiddenViewsChange={(hiddenPluginViews) => updateSettings({ hiddenPluginViews })}
+          onOpenView={changeView}
+        />
+      )}
       <Sidebar
-        hidden={view === 'settings'}
+        hidden={view === 'settings' || view === 'plugins'}
         repos={repos}
         worktrees={worktrees}
         errors={workspace.errors}
@@ -121,7 +171,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
         activeKey={session.key}
         onSelect={(key) => {
           setActiveKey(key)
-          setView((current) => (current === 'settings' ? 'sessions' : current))
+          setView((current) => (current === 'settings' || current === 'plugins' ? 'sessions' : current))
         }}
         onAddRepo={() => setAddingRepo(true)}
         onRemoveRepo={removeRepo}
@@ -168,9 +218,23 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
           <PullsView session={session} sideBySide={settings.diffSideBySide} onOpenSettings={() => setView('settings')} />
         </Suspense>
       )}
-      <StatusBar session={session} changes={changes} onOpenDiff={() => setView('diff')} />
+      {views
+        .filter((entry) => mountedViews.includes(entry.key))
+        .map((entry) => (
+          <PluginFrame
+            key={`${entry.key}@${entry.plugin.revision}`}
+            entry={entry}
+            title={pluginText(entry.plugin, entry.view.title, locale)}
+            active={view === entry.key}
+            context={pluginContext}
+            session={pluginSession}
+            onNotify={notifyFromPlugin}
+          />
+        ))}
+      <PluginBackgrounds plugins={plugins} context={pluginContext} session={pluginSession} onNotify={notifyFromPlugin} />
+      <StatusBar session={session} changes={changes} onOpenDiff={() => changeView('diff')} />
       {addingRepo && <AddRepoDialog existing={repos} onAdd={addRepo} onClose={() => setAddingRepo(false)} />}
-      {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
+      {notice && <Toast notice={notice} onClose={dismissNotice} />}
     </div>
   )
 }

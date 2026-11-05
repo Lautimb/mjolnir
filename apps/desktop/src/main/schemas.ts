@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isSafeRef, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
+import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
 import type { Settings } from '../shared/settings'
@@ -64,6 +65,19 @@ export const settings = z.object({
   terminalCursorStyle: z.enum(['block', 'bar', 'underline']),
   terminalCursorBlink: z.boolean(),
   diffSideBySide: z.boolean(),
+  hiddenPluginViews: z.array(z.string().max(300)).max(1000),
 }) satisfies z.ZodType<Settings>
 
 export const settingsPatch = settings.partial().strict()
+
+export const portRole = z.enum(['view', 'background'])
+
+export const grantedPermissions: z.ZodType<GrantablePermissions> = z
+  .object({
+    network: z.array(z.string().refine(isOriginPattern)).max(50).optional(),
+    workspace: z.literal('read').optional(),
+    repoFiles: z.array(z.string().refine(isRepoGlob)).max(20).optional(),
+    accounts: z.array(z.string().min(1).max(200)).max(10).optional(),
+    cli: z.array(z.string().max(5000)).max(5).optional(),
+  })
+  .strict()

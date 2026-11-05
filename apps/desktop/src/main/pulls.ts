@@ -10,7 +10,7 @@ import type { DiffFile, PullRequestContext, PullRequestDiff } from '../shared/ap
 import { AppError } from '../shared/errors'
 import type { Accounts } from './accounts'
 import { diffContent } from './diff-content'
-import { PROVIDERS } from './providers'
+import type { ProviderRegistry } from './providers'
 import type { Workspace } from './workspace'
 
 const pullRef = (number: number) => `refs/mjolnir/pulls/${number}`
@@ -20,6 +20,7 @@ export class Pulls {
   constructor(
     private readonly workspace: Workspace,
     private readonly accounts: Accounts,
+    private readonly providers: ProviderRegistry,
   ) {}
 
   async context(repoId: string): Promise<PullRequestContext> {
@@ -87,11 +88,6 @@ export class Pulls {
   private async detectRemote(repoId: string): Promise<RemoteRepo | null> {
     const { repo, git } = this.workspace.open(repoId)
     const parsed = parseRemoteUrl((await git.remoteUrl(repo.path)) ?? '')
-    if (!parsed) return null
-    for (const adapter of PROVIDERS) {
-      const match = adapter.definition.matchRemote(parsed)
-      if (match) return match
-    }
-    return null
+    return parsed && this.providers.match(parsed)
   }
 }

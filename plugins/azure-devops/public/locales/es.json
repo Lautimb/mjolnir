@@ -1,0 +1,3 @@
+{
+  "description": "Cuentas y pull requests de Azure Repos. Usá un PAT creado para todas las organizaciones, o la CLI de Azure (az login)."
+}

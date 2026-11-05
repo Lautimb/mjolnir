@@ -1,0 +1,19 @@
+{
+  "name": "@mjolnir/plugin-azure-devops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "package": "vite build && mjolnir-plugin pack dist",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@mjolnir/plugin-sdk": "workspace:*",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
+  }
+}

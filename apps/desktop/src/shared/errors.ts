@@ -16,6 +16,12 @@ export interface AppErrorParams {
   deviceFlowUnavailable: NoParams
   deviceFlowDenied: NoParams
   deviceFlowExpired: NoParams
+  unknownPlugin: { id: string }
+  pluginInvalid: { issue: string }
+  pluginExists: { id: string; path: string }
+  pluginPermissionsChanged: NoParams
+  pluginIncompatible: { required: string; reason: 'app' | 'api' }
+  pluginProviderFailed: { provider: string; message: string }
 }
 
 export type AppErrorCode = keyof AppErrorParams
