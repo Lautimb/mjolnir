@@ -8,6 +8,7 @@ import type {
   InvokeMessage,
   InvokeReply,
   Json,
+  NewSessionRequest,
   NotifyKind,
   PluginContext,
   PluginMessage,
@@ -16,7 +17,7 @@ import type {
   SessionRef,
   ShellMessage,
 } from './protocol'
-import type { ProviderImplementation } from './providers'
+import type { ProviderCredential, ProviderImplementation } from './providers'
 import { applyTheme } from './theme'
 
 export class HostError extends Error {
@@ -54,6 +55,7 @@ export interface Mjolnir {
   }
   accounts: {
     token(provider: string, host: string): Promise<string | null>
+    credential(provider: string, host: string): Promise<ProviderCredential | null>
   }
   providers: {
     register(providerId: string, implementation: ProviderImplementation): () => void
@@ -61,6 +63,7 @@ export interface Mjolnir {
   ui: {
     notify(message: string, kind?: NotifyKind): void
     openExternal(url: string): Promise<void>
+    newSession(request: NewSessionRequest): void
   }
 }
 
@@ -187,6 +190,7 @@ export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginCo
     },
     accounts: {
       token: (provider, host) => call('accounts.token', provider, host),
+      credential: (provider, host) => call('accounts.credential', provider, host),
     },
     providers: {
       register,
@@ -194,6 +198,7 @@ export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginCo
     ui: {
       notify: (message, kind = 'info') => shell.post({ type: 'mjolnir:notify', message, kind }),
       openExternal: (url) => call('ui.openExternal', url),
+      newSession: ({ repoId, branch }) => shell.post({ type: 'mjolnir:newSession', repoId, branch }),
     },
   }
 }

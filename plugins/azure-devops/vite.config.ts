@@ -2,5 +2,5 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   base: './',
-  build: { outDir: 'dist', emptyOutDir: true, rollupOptions: { input: 'background.html' } },
+  build: { outDir: 'dist', emptyOutDir: true, rollupOptions: { input: ['background.html', 'boards.html'] } },
 })

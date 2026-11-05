@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronRight, FolderPlus, GitBranch, Plus, SquareTerminal, Trash2, X, Zap } from 'lucide-react'
 import type { Repo, Worktree } from '@mjolnir/core/browser'
 import { describeError, hostLabel, useI18n } from '../i18n/I18nProvider'
@@ -6,7 +6,7 @@ import type { Tab } from '../terminals/model'
 import { Badge } from '../ui/Badge'
 import { IconButton } from '../ui/Button'
 import { cx, eyebrow } from '../ui/cx'
-import { SCRATCH_KEY, sessionKey } from './model'
+import { SCRATCH_KEY, sessionKey, type SessionDraft } from './model'
 import { NewSessionForm } from './NewSessionForm'
 
 interface Props {
@@ -21,6 +21,8 @@ interface Props {
   onRemoveRepo(repo: Repo): void
   onCreateSession(repo: Repo, branch: string, base: string): Promise<void>
   onRemoveSession(repo: Repo, worktree: Worktree): void
+  draft: SessionDraft | null
+  onDraftDone(): void
 }
 
 const ON_HOVER = 'hidden gap-0.5 group-hover:flex group-focus-within:flex'
@@ -84,9 +86,19 @@ export function Sidebar(props: Props) {
     return { terminals: live.length, agent: live.some((tab) => tab.kind === 'agent') }
   }
 
-  const startCreating = (repo: Repo) => {
-    setCollapsed((current) => ({ ...current, [repo.id]: false }))
-    setCreatingIn(repo.id)
+  const startCreating = (repoId: string) => {
+    setCollapsed((current) => ({ ...current, [repoId]: false }))
+    setCreatingIn(repoId)
+  }
+
+  const { draft, onDraftDone } = props
+  useEffect(() => {
+    if (draft) startCreating(draft.repoId)
+  }, [draft])
+
+  const stopCreating = () => {
+    setCreatingIn(null)
+    onDraftDone()
   }
 
   const scratch = indicators(SCRATCH_KEY)
@@ -128,7 +140,7 @@ export function Sidebar(props: Props) {
                   {t(`hosts.short.${repo.host.kind}`)}
                 </Badge>
                 <span className={ON_HOVER}>
-                  <IconButton title={t('sidebar.newSession')} onClick={stop(() => startCreating(repo))}>
+                  <IconButton title={t('sidebar.newSession')} onClick={stop(() => startCreating(repo.id))}>
                     <Plus size={14} />
                   </IconButton>
                   <IconButton danger title={t('sidebar.removeRepo')} onClick={stop(() => props.onRemoveRepo(repo))}>
@@ -165,18 +177,20 @@ export function Sidebar(props: Props) {
 
               {open && creatingIn === repo.id && (
                 <NewSessionForm
+                  key={draft?.repoId === repo.id ? draft.nonce : 0}
                   repo={repo}
+                  initialBranch={draft?.repoId === repo.id ? draft.branch : ''}
                   fallbackBase={main?.branch ?? 'main'}
-                  onCancel={() => setCreatingIn(null)}
+                  onCancel={stopCreating}
                   onCreate={async (branch, base) => {
                     await props.onCreateSession(repo, branch, base)
-                    setCreatingIn(null)
+                    stopCreating()
                   }}
                 />
               )}
 
               {open && creatingIn !== repo.id && (
-                <Row indent tone="quiet" onClick={() => setCreatingIn(repo.id)}>
+                <Row indent tone="quiet" onClick={() => startCreating(repo.id)}>
                   <Plus size={14} />
                   <Label>{t('sidebar.newSession')}</Label>
                 </Row>

@@ -22,7 +22,7 @@ function setup(active: Record<string, string[]> = { hello: ['https://api.io'] },
       resolved.push(repoId)
       return repo
     },
-    accountToken: async (provider, host) => `token:${provider}@${host}`,
+    accountCredential: async (provider, host) => ({ host, token: `token:${provider}@${host}`, source: 'token' }),
     openExternal: (url) => void opened.push(url),
   })
   return { broker, opened, fetched, resolved }
@@ -108,5 +108,15 @@ describe('createBroker', () => {
     expect(await token('azure', 'github')).toMatchObject({ error: { code: 'permissionDenied' } })
     expect(await token('tools', 'github')).toEqual({ id: 1, result: 'token:github@github.com' })
     expect(await token('tools', 'azure.azure-devops')).toMatchObject({ error: { code: 'permissionDenied' } })
+  })
+
+  it('gives the credential source along with the token, under the same permission check', async () => {
+    const { broker } = setup({ azure: [], tools: [] })
+    const credential = (plugin: string, provider: string) => broker(plugin, { id: 1, method: 'accounts.credential', params: [provider, 'dev.azure.com'] })
+    expect(await credential('azure', 'azure.azure-devops')).toEqual({
+      id: 1,
+      result: { host: 'dev.azure.com', token: 'token:azure.azure-devops@dev.azure.com', source: 'token' },
+    })
+    expect(await credential('tools', 'azure.azure-devops')).toMatchObject({ error: { code: 'permissionDenied' } })
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HttpRequest, HttpResponse } from '@mjolnir/plugin-sdk'
-import { authorization, createAzureProvider, reviewDecision, toComments, toDetail, type GitPullRequest } from './azure'
+import { authorization } from './api'
+import { createAzureProvider, reviewDecision, toComments, toDetail, type GitPullRequest } from './azure'
 
 const credential = { host: 'dev.azure.com', token: 'pat', source: 'token' as const }
 const remote = { provider: 'azure-devops.azure-devops', host: 'dev.azure.com', owner: 'acme/Web Site', name: 'api' }

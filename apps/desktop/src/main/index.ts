@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app, net, safeStorage, session } from 'electron'
-import { localize } from '@mjolnir/plugin-sdk'
+import { localize, type ProviderCredential } from '@mjolnir/plugin-sdk'
 import { SOURCE_LOCALE } from '../shared/locales'
 import { nextZoom } from '../shared/zoom'
 import { Accounts } from './accounts'
@@ -29,11 +29,11 @@ interface PluginDeps {
   userData: string
   workspace: Workspace
   window: MainWindow
-  accountToken(provider: string, host: string): Promise<string | null>
+  accountCredential(provider: string, host: string): Promise<ProviderCredential | null>
   onChange(): void
 }
 
-function createPlugins({ userData, workspace, window, accountToken, onChange }: PluginDeps) {
+function createPlugins({ userData, workspace, window, accountCredential, onChange }: PluginDeps) {
   const registry = new PluginRegistry({
     file: join(userData, 'plugins.json'),
     packagesDir: join(userData, 'plugins'),
@@ -71,7 +71,7 @@ function createPlugins({ userData, workspace, window, accountToken, onChange }: 
       workspace.nativeWorktreePath(repoId, worktree).catch(() => {
         throw new HostFailure('invalidRequest', 'unknown session')
       }),
-    accountToken,
+    accountCredential,
     openExternal,
   })
   const ports = new PluginPorts(broker, backgrounds, (pluginId) => !!registry.permissions(pluginId))
@@ -111,7 +111,7 @@ void app.whenReady().then(async () => {
     userData,
     workspace,
     window,
-    accountToken: (provider, host) => accounts.token(provider, host),
+    accountCredential: (provider, host) => accounts.credentialFor(provider, host),
     onChange: () => {
       plugins.ports.closeInactive()
       window.send('plugins:changed')

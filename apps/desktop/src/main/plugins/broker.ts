@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { HostMethod, HostMethods, HttpRequest, Json, ReplyMessage, SessionRef } from '@mjolnir/plugin-sdk'
+import type { HostMethod, HostMethods, HttpRequest, Json, ProviderCredential, ReplyMessage, SessionRef } from '@mjolnir/plugin-sdk'
 import type { PluginPermissions } from '@mjolnir/plugin-sdk/manifest'
 import type { PluginData } from './data'
 import { HostFailure } from './failure'
@@ -11,7 +11,7 @@ export interface BrokerDeps {
   permissions(pluginId: string): PluginPermissions | null
   fetch(pluginId: string): Fetch
   worktreeRoot(session: SessionRef): Promise<string>
-  accountToken(provider: string, host: string): Promise<string | null>
+  accountCredential(provider: string, host: string): Promise<ProviderCredential | null>
   openExternal(url: string): void
 }
 
@@ -23,6 +23,7 @@ const url = z.url({ protocol: /^https?$/ })
 const sessionRef: z.ZodType<SessionRef> = z.object({ repoId: z.string().min(1).max(200), worktree: z.string().min(1).max(4096) }).strict()
 const repoPath = z.string().max(1024)
 const fileContent = z.string()
+const account = z.tuple([z.string().min(1).max(200), z.string().min(1).max(253)])
 
 const httpRequest: z.ZodType<HttpRequest> = z
   .object({
@@ -53,6 +54,11 @@ function routes(deps: BrokerDeps): Routes {
     if (!globs(pluginId)?.length) throw new HostFailure('permissionDenied', 'repoFiles')
     return deps.worktreeRoot(session)
   }
+  const credential = (pluginId: string, provider: string, host: string) => {
+    const own = provider.startsWith(`${pluginId}.`)
+    if (!own && !deps.permissions(pluginId)?.accounts?.includes(provider)) throw new HostFailure('permissionDenied', provider)
+    return deps.accountCredential(provider, host)
+  }
   return {
     'storage.get': { params: z.tuple([key]), run: (id, name) => store(id).storage.get(name) },
     'storage.set': { params: z.tuple([key, json]), run: (id, name, value) => store(id).storage.set(name, value) },
@@ -72,14 +78,8 @@ function routes(deps: BrokerDeps): Routes {
       run: async (id, session, path, content) => writeRepoFile(await root(id, session), path, content, globs(id)),
     },
     'repoFiles.delete': { params: z.tuple([sessionRef, repoPath]), run: async (id, session, path) => deleteRepoFile(await root(id, session), path, globs(id)) },
-    'accounts.token': {
-      params: z.tuple([z.string().min(1).max(200), z.string().min(1).max(253)]),
-      run: (id, provider, host) => {
-        const own = provider.startsWith(`${id}.`)
-        if (!own && !deps.permissions(id)?.accounts?.includes(provider)) throw new HostFailure('permissionDenied', provider)
-        return deps.accountToken(provider, host)
-      },
-    },
+    'accounts.token': { params: account, run: async (id, provider, host) => (await credential(id, provider, host))?.token ?? null },
+    'accounts.credential': { params: account, run: credential },
     'ui.openExternal': { params: z.tuple([url]), run: (_id, target) => deps.openExternal(target) },
   }
 }

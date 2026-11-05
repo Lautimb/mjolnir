@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
-import { readTheme, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
+import { readTheme, type NewSessionRequest, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { appErrorCode } from '../../../shared/errors'
 import type { Settings } from '../../../shared/settings'
 import { useChangedFiles } from '../diff/useChangedFiles'
@@ -11,7 +11,7 @@ import { PluginFrame } from '../plugins/PluginFrame'
 import { PluginsView } from '../plugins/PluginsView'
 import { usePlugins } from '../plugins/usePlugins'
 import { AddRepoDialog } from '../sessions/AddRepoDialog'
-import { repoKeyPrefix, SCRATCH_KEY, sessionKey } from '../sessions/model'
+import { repoKeyPrefix, SCRATCH_KEY, sessionKey, type SessionDraft } from '../sessions/model'
 import { Sidebar } from '../sessions/Sidebar'
 import { useSessions } from '../sessions/useSessions'
 import { useWorkspace } from '../sessions/useWorkspace'
@@ -52,6 +52,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const { notice, show: setNotice, dismiss: dismissNotice } = useNotice()
   const { plugins } = usePlugins()
   const [mountedViews, setMountedViews] = useState<PluginViewKey[]>([])
+  const [sessionDraft, setSessionDraft] = useState<SessionDraft | null>(null)
 
   useEffect(() => {
     void window.mjolnir.profiles.list().then(setProfiles)
@@ -70,6 +71,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     [views, locale, settings.hiddenPluginViews],
   )
   const pluginContext = useMemo<Omit<PluginContext, 'session'>>(() => ({ locale, theme: readTheme(getComputedStyle(document.documentElement)) }), [locale])
+  const newSessionFromPlugin = useCallback((request: NewSessionRequest) => setSessionDraft({ ...request, nonce: Date.now() }), [])
   const notifyFromPlugin = useCallback((message: string, kind: NotifyKind) => setNotice(message, kind === 'error' ? 'danger' : 'info'), [setNotice])
 
   useEffect(() => {
@@ -177,6 +179,8 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
         onRemoveRepo={removeRepo}
         onCreateSession={createSession}
         onRemoveSession={removeSession}
+        draft={sessionDraft}
+        onDraftDone={() => setSessionDraft(null)}
       />
       <section hidden={view !== 'sessions'} className={MAIN_COLUMN}>
         <TabBar
@@ -230,6 +234,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
             context={pluginContext}
             session={pluginSession}
             onNotify={notifyFromPlugin}
+            onNewSession={newSessionFromPlugin}
           />
         ))}
       <PluginBackgrounds plugins={plugins} context={pluginContext} session={pluginSession} onNotify={notifyFromPlugin} />

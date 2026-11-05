@@ -9,6 +9,7 @@ import {
   type Host,
   type PullRequestProvider,
 } from '@mjolnir/core'
+import type { ProviderCredential } from '@mjolnir/plugin-sdk'
 import type { ProviderInfo } from '../shared/api'
 import { AppError } from '../shared/errors'
 import { readJson, writeJsonAtomic } from './json-file'
@@ -101,10 +102,12 @@ export class Accounts {
     this.persist()
   }
 
-  async token(provider: string, host: string): Promise<string | null> {
+  async credentialFor(provider: string, host: string): Promise<ProviderCredential | null> {
     const adapter = this.registry.get(provider)
     const stored = this.stored(provider, host)
-    return adapter && stored ? this.credential(adapter, stored).catch(() => null) : null
+    if (!adapter || !stored) return null
+    const token = await this.credential(adapter, stored).catch(() => null)
+    return token ? { host, token, source: stored.source } : null
   }
 
   async use<T>(provider: string, host: string, action: (pulls: PullRequestProvider) => Promise<T>): Promise<T> {

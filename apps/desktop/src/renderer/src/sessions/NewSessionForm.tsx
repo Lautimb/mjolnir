@@ -7,14 +7,15 @@ import { BranchPicker } from './BranchPicker'
 
 interface Props {
   repo: Repo
+  initialBranch: string
   fallbackBase: string
   onCreate(branch: string, base: string): Promise<void>
   onCancel(): void
 }
 
-export function NewSessionForm({ repo, fallbackBase, onCreate, onCancel }: Props) {
+export function NewSessionForm({ repo, initialBranch, fallbackBase, onCreate, onCancel }: Props) {
   const { t } = useI18n()
-  const [branch, setBranch] = useState('')
+  const [branch, setBranch] = useState(initialBranch)
   const [base, setBase] = useState<string | null>(null)
   const [branches, setBranches] = useState<BranchList | null>(null)
   const [fetching, setFetching] = useState(false)

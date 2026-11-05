@@ -1,4 +1,4 @@
-import type { ProviderMethod } from './providers'
+import type { ProviderCredential, ProviderMethod } from './providers'
 
 export const API_VERSION = 1
 
@@ -60,6 +60,7 @@ export interface HostMethods {
   'repoFiles.write': { params: [session: SessionRef, path: string, content: string]; result: void }
   'repoFiles.delete': { params: [session: SessionRef, path: string]; result: void }
   'accounts.token': { params: [provider: string, host: string]; result: string | null }
+  'accounts.credential': { params: [provider: string, host: string]; result: ProviderCredential | null }
   'ui.openExternal': { params: [url: string]; result: void }
 }
 
@@ -107,4 +108,9 @@ export type NotifyKind = 'info' | 'error'
 
 export type ShellMessage = { type: 'mjolnir:connect'; context: PluginContext } | { type: 'mjolnir:context'; context: PluginContext }
 
-export type PluginMessage = { type: 'mjolnir:notify'; message: string; kind: NotifyKind }
+export interface NewSessionRequest {
+  repoId: string
+  branch: string
+}
+
+export type PluginMessage = { type: 'mjolnir:notify'; message: string; kind: NotifyKind } | ({ type: 'mjolnir:newSession' } & NewSessionRequest)
