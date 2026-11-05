@@ -9,5 +9,9 @@ export function registerWindowIpc({ window, store }: Services): void {
   handle('window:isMaximized', [], () => window.isMaximized())
 
   handle('settings:get', [], () => store.settings())
-  handle('settings:update', [settingsPatch], (patch) => store.updateSettings(patch))
+  handle('settings:update', [settingsPatch], (patch) => {
+    const settings = store.updateSettings(patch)
+    if (patch.zoom !== undefined) window.setZoom(settings.zoom)
+    return settings
+  })
 }

@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { app, net, safeStorage, session } from 'electron'
 import { localize } from '@mjolnir/plugin-sdk'
 import { SOURCE_LOCALE } from '../shared/locales'
+import { nextZoom } from '../shared/zoom'
 import { Accounts } from './accounts'
 import { detectEnvironment } from './environment'
 import { registerIpc } from './ipc'
@@ -94,7 +95,18 @@ void app.whenReady().then(async () => {
   const store = new Store(join(userData, 'workspace.json'))
   const workspace = new Workspace(store)
   const terminals = new PtyManager((channel, id, payload) => window.send(channel, id, payload))
-  const window = new MainWindow(environment.appHost, () => terminals.killAll())
+  const window = new MainWindow(
+    environment.appHost,
+    {
+      current: () => store.settings().zoom,
+      change: (direction) => {
+        const settings = store.updateSettings({ zoom: nextZoom(store.settings().zoom, direction) })
+        window.setZoom(settings.zoom)
+        window.send('settings:changed', settings)
+      },
+    },
+    () => terminals.killAll(),
+  )
   const plugins = createPlugins({
     userData,
     workspace,

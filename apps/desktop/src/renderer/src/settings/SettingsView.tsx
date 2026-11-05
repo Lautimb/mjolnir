@@ -4,7 +4,8 @@ import { LOCALE_IDS, type LanguagePreference } from '../../../shared/locales'
 import { TERMINAL_FONT_SIZE, type Settings } from '../../../shared/settings'
 import { LOCALES } from '../i18n/catalog'
 import { useI18n } from '../i18n/I18nProvider'
-import { zoomed } from '../terminals/shortcuts'
+import { nextZoom, ZOOM_LEVELS } from '../../../shared/zoom'
+import { stepFontSize } from '../terminals/shortcuts'
 import { IconButton } from '../ui/Button'
 import { cx, eyebrow } from '../ui/cx'
 import { Description } from '../ui/Description'
@@ -74,6 +75,34 @@ export function SettingsView({ settings, onChange }: Props) {
               onChange={(panelPosition) => onChange({ panelPosition })}
             />
           </Setting>
+          <Setting title={t('settings.zoom.title')} description={t('settings.zoom.description')}>
+            <div className="flex flex-none items-center gap-1">
+              <IconButton
+                aria-label={t('settings.zoom.out')}
+                title={t('settings.zoom.out')}
+                disabled={settings.zoom <= ZOOM_LEVELS[0]}
+                onClick={() => onChange({ zoom: nextZoom(settings.zoom, 'out') })}
+              >
+                <Minus size={14} />
+              </IconButton>
+              <button
+                type="button"
+                className="w-12 rounded-sm text-center text-sm tabular-nums hover:bg-hover"
+                title={t('settings.zoom.reset')}
+                onClick={() => onChange({ zoom: nextZoom(settings.zoom, 'reset') })}
+              >
+                {Math.round(settings.zoom * 100)}%
+              </button>
+              <IconButton
+                aria-label={t('settings.zoom.in')}
+                title={t('settings.zoom.in')}
+                disabled={settings.zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!}
+                onClick={() => onChange({ zoom: nextZoom(settings.zoom, 'in') })}
+              >
+                <Plus size={14} />
+              </IconButton>
+            </div>
+          </Setting>
         </Section>
 
         <Section title={t('settings.sections.terminal')}>
@@ -94,7 +123,7 @@ export function SettingsView({ settings, onChange }: Props) {
                 aria-label={t('settings.fontSize.decrease')}
                 title={t('settings.fontSize.decrease')}
                 disabled={settings.terminalFontSize <= TERMINAL_FONT_SIZE.min}
-                onClick={() => onChange({ terminalFontSize: zoomed(settings.terminalFontSize, 'zoomOut') })}
+                onClick={() => onChange({ terminalFontSize: stepFontSize(settings.terminalFontSize, -1) })}
               >
                 <Minus size={14} />
               </IconButton>
@@ -103,7 +132,7 @@ export function SettingsView({ settings, onChange }: Props) {
                 aria-label={t('settings.fontSize.increase')}
                 title={t('settings.fontSize.increase')}
                 disabled={settings.terminalFontSize >= TERMINAL_FONT_SIZE.max}
-                onClick={() => onChange({ terminalFontSize: zoomed(settings.terminalFontSize, 'zoomIn') })}
+                onClick={() => onChange({ terminalFontSize: stepFontSize(settings.terminalFontSize, 1) })}
               >
                 <Plus size={14} />
               </IconButton>
