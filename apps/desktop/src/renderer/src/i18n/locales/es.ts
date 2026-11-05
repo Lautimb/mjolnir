@@ -246,7 +246,10 @@ export const es = {
   },
   errors: {
     noTerminal: 'No hay una terminal disponible para este host.',
+    invalidRequest: 'Mjolnir rechazó un pedido inválido ({channel}).',
     unknownRepo: 'Repo desconocido: {id}',
+    unknownWorktree: 'La carpeta {path} no es un worktree de este repo.',
+    worktreeDirty: '{name} tiene cambios sin commitear.',
     unknownProfile: 'Perfil de terminal desconocido: {id}',
     worktreeMissing: 'El worktree no aparece en {path}',
     unsupportedRemote: 'El remoto de este repo no corresponde a ningún proveedor soportado.',

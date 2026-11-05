@@ -9,6 +9,7 @@ import {
   findBranch,
   hostHome,
   hostPath,
+  isInside,
   resolveLocation,
   sameHost,
   toNativePath,
@@ -90,14 +91,25 @@ export class Workspace {
   }
 
   async removeWorktree(repoId: string, path: string, force: boolean): Promise<void> {
-    const repo = this.repo(repoId)
-    await this.git(repo).removeWorktree(repo.path, path, force)
-    this.store.setSessionBase(sessionKey(repoId, path), null)
+    const { repo, git } = this.open(repoId)
+    const worktree = await this.worktree(repoId, path)
+    if (worktree.main) throw new AppError('unknownWorktree', { path })
+    if (!force && (await git.changedFiles(worktree.path)) > 0) {
+      throw new AppError('worktreeDirty', { name: worktree.branch ?? worktree.path })
+    }
+    await git.removeWorktree(repo.path, worktree.path, force)
+    this.store.setSessionBase(sessionKey(repoId, worktree.path), null)
+  }
+
+  async worktree(repoId: string, path: string): Promise<Worktree> {
+    const worktree = (await this.worktrees(repoId)).find((candidate) => candidate.path === path)
+    if (!worktree) throw new AppError('unknownWorktree', { path })
+    return worktree
   }
 
   async compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff> {
-    const repo = this.repo(repoId)
-    const diff = createDiff(createHostExec(repo.host))
+    const { repo, diff } = this.open(repoId)
+    await this.worktree(repoId, path)
     const base = this.store.sessionBase(sessionKey(repoId, path)) ?? (await this.git(repo).defaultBase(repo.path))
     const from = await diff.resolveFrom(path, mode, base)
     return { mode, base, from, files: await diff.files(path, from) }
@@ -105,6 +117,7 @@ export class Workspace {
 
   async diffFile(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile> {
     const { repo, diff } = this.open(repoId)
+    await this.worktree(repoId, path)
     if (change.binary) return { kind: 'binary' }
     const modified = change.status === 'deleted' ? '' : await this.readWorkingFile(repo, path, change.path)
     if (modified === null) return { kind: 'too-large' }
@@ -112,13 +125,17 @@ export class Workspace {
   }
 
   private async readWorkingFile(repo: Repo, dir: string, file: string): Promise<string | null> {
-    const nativePath = toNativePath(process.platform, repo.host, hostPath(repo.host).join(dir, file))
+    const paths = hostPath(repo.host)
+    if (!isInside(paths, dir, file)) throw new AppError('unknownWorktree', { path: file })
+    const target = paths.resolve(dir, file)
+    const nativePath = toNativePath(process.platform, repo.host, target)
     if ((await stat(nativePath)).size > MAX_DIFF_BYTES) return null
     return readFile(nativePath, 'utf8')
   }
 
   async changedFiles(repoId: string, path: string): Promise<number> {
-    return this.git(this.repo(repoId)).changedFiles(path)
+    const worktree = await this.worktree(repoId, path)
+    return this.git(this.repo(repoId)).changedFiles(worktree.path)
   }
 
   open(repoId: string): { repo: Repo; git: Git; diff: ReturnType<typeof createDiff> } {

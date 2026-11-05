@@ -1,13 +1,14 @@
-import { ipcMain } from 'electron'
-import type { Accounts } from '../accounts'
+import type { Services } from '.'
+import { handle, listen } from './handle'
+import { id, label, token } from '../schemas'
 
-export function registerAccountsIpc(accounts: Accounts): void {
-  ipcMain.handle('accounts:providers', () => accounts.providers())
-  ipcMain.handle('accounts:list', () => accounts.list())
-  ipcMain.handle('accounts:connectCli', (_event, provider: string) => accounts.connectCli(provider))
-  ipcMain.handle('accounts:connectToken', (_event, provider: string, token: string) => accounts.connectToken(provider, token))
-  ipcMain.handle('accounts:startDeviceFlow', (_event, provider: string) => accounts.startDeviceFlow(provider))
-  ipcMain.handle('accounts:finishDeviceFlow', (_event, provider: string) => accounts.finishDeviceFlow(provider))
-  ipcMain.on('accounts:cancelDeviceFlow', (_event, provider: string) => accounts.cancelDeviceFlow(provider))
-  ipcMain.handle('accounts:disconnect', (_event, provider: string, host: string) => accounts.disconnect(provider, host))
+export function registerAccountsIpc({ accounts }: Services): void {
+  handle('accounts:providers', [], () => accounts.providers())
+  handle('accounts:list', [], () => accounts.list())
+  handle('accounts:connectCli', [id], (provider) => accounts.connectCli(provider))
+  handle('accounts:connectToken', [id, token], (provider, secret) => accounts.connectToken(provider, secret))
+  handle('accounts:startDeviceFlow', [id], (provider) => accounts.startDeviceFlow(provider))
+  handle('accounts:finishDeviceFlow', [id], (provider) => accounts.finishDeviceFlow(provider))
+  listen('accounts:cancelDeviceFlow', [id], (provider) => accounts.cancelDeviceFlow(provider))
+  handle('accounts:disconnect', [id, label], (provider, host) => accounts.disconnect(provider, host))
 }

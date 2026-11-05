@@ -1,5 +1,6 @@
 import { BRANCH_FORMAT, parseBranchRefs, worktreeAddArgs, type BranchList } from './branches'
 import type { PathApi } from './node'
+import { safeRef } from './refs'
 
 export type Exec = (cwd: string, file: string, args: string[]) => Promise<string>
 
@@ -79,7 +80,7 @@ export function createGit(exec: Exec, paths: PathApi) {
     },
 
     async removeWorktree(repo: string, path: string, force: boolean): Promise<void> {
-      await git(repo, 'worktree', 'remove', ...(force ? ['--force'] : []), path)
+      await git(repo, 'worktree', 'remove', ...(force ? ['--force'] : []), '--', path)
     },
 
     async changedFiles(dir: string): Promise<number> {
@@ -91,7 +92,7 @@ export function createGit(exec: Exec, paths: PathApi) {
     },
 
     async fetchRef(repo: string, source: string, target: string, remote = 'origin'): Promise<void> {
-      await git(repo, 'fetch', '--no-tags', remote, `+${source}:${target}`)
+      await git(repo, 'fetch', '--no-tags', remote, `+${safeRef(source)}:${safeRef(target)}`)
     },
 
     async publishState(dir: string): Promise<{ upstream: string | null; ahead: number }> {
@@ -101,11 +102,11 @@ export function createGit(exec: Exec, paths: PathApi) {
     },
 
     async mergeBase(dir: string, a: string, b: string): Promise<string | null> {
-      return orNull(git(dir, 'merge-base', a, b))
+      return orNull(git(dir, 'merge-base', safeRef(a), safeRef(b)))
     },
 
     async push(dir: string, branch: string, remote = 'origin'): Promise<void> {
-      await git(dir, 'push', '--set-upstream', remote, branch)
+      await git(dir, 'push', '--set-upstream', remote, safeRef(branch))
     },
   }
 }

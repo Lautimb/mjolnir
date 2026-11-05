@@ -14,6 +14,7 @@ import { describeError, useI18n } from './i18n/I18nProvider'
 import { useChangedFiles } from './useChangedFiles'
 import type { UpdateSettings } from './useSettings'
 import { useWorkspace } from './useWorkspace'
+import { appErrorCode } from '../../shared/errors'
 import type { Settings } from '../../shared/settings'
 import {
   SCRATCH_KEY,
@@ -134,8 +135,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     try {
       await workspace.removeWorktree(repo.id, worktree.path, false)
     } catch (error) {
-      const message = describeError(t, error)
-      if (!/modified or untracked/.test(message)) return setNotice(message)
+      if (appErrorCode(error) !== 'worktreeDirty') return setNotice(describeError(t, error))
       if (!confirm(t('sessions.confirmForceRemove', { name }))) return
       await workspace.removeWorktree(repo.id, worktree.path, true).catch((err: unknown) => setNotice(describeError(t, err)))
     }

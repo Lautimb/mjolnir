@@ -1,3 +1,5 @@
+import { safeRef } from './refs'
+
 export interface BranchRef {
   name: string
   remote: string | null
@@ -47,10 +49,11 @@ export function findBranch(refs: BranchRef[], name: string): BranchRef | undefin
 }
 
 export function worktreeAddArgs(refs: BranchRef[], path: string, branch: string, base: string): string[] {
+  safeRef(branch)
   const existing = findBranch(refs, branch)
   if (existing && !existing.remote) return ['worktree', 'add', path, branch]
   if (existing) return ['worktree', 'add', '--track', '-b', branch, path, existing.name]
-  return ['worktree', 'add', '--no-track', '-b', branch, path, base]
+  return ['worktree', 'add', '--no-track', '-b', branch, path, safeRef(base)]
 }
 
 export function groupBranches(list: BranchList, query: string): { groups: BranchGroup[]; hiddenOthers: number } {

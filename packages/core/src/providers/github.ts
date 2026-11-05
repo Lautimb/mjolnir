@@ -161,6 +161,8 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
   }
 
   const repoPath = (repo: RemoteRepo) => `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}`
+  const issuePath = (repo: RemoteRepo, number: number) => `${repoPath(repo)}/issues/${pullNumber(number)}`
+  const pullPath = (repo: RemoteRepo, number: number) => `${repoPath(repo)}/pulls/${pullNumber(number)}`
 
   let viewerLogin: Promise<string> | null = null
   const viewer = () => request<GitHubUser>('/user')
@@ -168,7 +170,7 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
 
   const provider: PullRequestProvider = {
     async list(repo: RemoteRepo, { filter, state }: PullRequestQuery) {
-      const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=${state}&sort=updated&direction=desc&per_page=100`)
+      const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=${encodeURIComponent(state)}&sort=updated&direction=desc&per_page=100`)
       if (filter === 'all') return pulls.map(summary)
       const me = await login()
       return pulls
@@ -181,9 +183,9 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
     },
 
     async get(repo: RemoteRepo, number: number): Promise<PullRequestDetail> {
-      const pull = await request<GitHubPull>(`${repoPath(repo)}/pulls/${number}`)
+      const pull = await request<GitHubPull>(pullPath(repo, number))
       const [reviews, runs, status] = await Promise.all([
-        request<GitHubReview[]>(`${repoPath(repo)}/pulls/${number}/reviews?per_page=100`),
+        request<GitHubReview[]>(`${pullPath(repo, number)}/reviews?per_page=100`),
         request<GitHubCheckRuns>(`${repoPath(repo)}/commits/${pull.head.sha}/check-runs?per_page=100`),
         request<GitHubCombinedStatus>(`${repoPath(repo)}/commits/${pull.head.sha}/status`),
       ])
@@ -214,22 +216,27 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
     },
 
     async comments(repo: RemoteRepo, number: number) {
-      const comments = await request<GitHubComment[]>(`${repoPath(repo)}/issues/${number}/comments?per_page=100`)
+      const comments = await request<GitHubComment[]>(`${issuePath(repo, number)}/comments?per_page=100`)
       return comments.map(comment)
     },
 
     async comment(repo: RemoteRepo, number: number, body: string) {
-      return comment(await request<GitHubComment>(`${repoPath(repo)}/issues/${number}/comments`, { method: 'POST', body: { body } }))
+      return comment(await request<GitHubComment>(`${issuePath(repo, number)}/comments`, { method: 'POST', body: { body } }))
     },
 
-    async create(repo: RemoteRepo, input: CreatePullRequestInput) {
-      return summary(await request<GitHubPull>(`${repoPath(repo)}/pulls`, { method: 'POST', body: input }))
+    async create(repo: RemoteRepo, { head, base, title, body, draft }: CreatePullRequestInput) {
+      return summary(await request<GitHubPull>(`${repoPath(repo)}/pulls`, { method: 'POST', body: { head, base, title, body, draft } }))
     },
 
-    headRefspec: (number: number) => `pull/${number}/head`,
+    headRefspec: (number: number) => `pull/${pullNumber(number)}/head`,
   }
 
   return { ...provider, viewer }
+}
+
+function pullNumber(number: number): number {
+  if (!Number.isSafeInteger(number) || number <= 0) throw new RangeError(`Invalid pull request number: ${number}`)
+  return number
 }
 
 function comment(raw: GitHubComment): PullRequestComment {

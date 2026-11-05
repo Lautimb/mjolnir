@@ -1,7 +1,10 @@
 type NoParams = Record<never, never>
 
 export interface AppErrorParams {
+  invalidRequest: { channel: string }
   unknownRepo: { id: string }
+  unknownWorktree: { path: string }
+  worktreeDirty: { name: string }
   unknownProfile: { id: string }
   worktreeMissing: { path: string }
   unsupportedRemote: NoParams
@@ -38,4 +41,8 @@ export function parseAppError(message: string): AppErrorPayload | null {
   } catch {
     return null
   }
+}
+
+export function appErrorCode(error: unknown): AppErrorCode | null {
+  return parseAppError(error instanceof Error ? error.message : String(error))?.code ?? null
 }
