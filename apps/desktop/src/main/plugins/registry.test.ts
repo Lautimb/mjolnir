@@ -179,6 +179,31 @@ describe('PluginRegistry', () => {
     expect(existsSync(join(packagesDir, 'hello'))).toBe(false)
   })
 
+  it('records where a package came from and whether its signature was verified', async () => {
+    const first = await registry()
+    await first.instance.installArchive(readFileSync(mjp()), 'hello.mjp', { origin: 'catalog', verified: true })
+    const { instance } = await registry(first.file)
+    expect(instance.list()[0]!.source).toMatchObject({ kind: 'package', origin: 'catalog', verified: true })
+  })
+
+  it('treats packages installed before the catalog existed as unverified files', async () => {
+    const first = await registry()
+    await first.instance.installPackage(mjp())
+    const saved = JSON.parse(readFileSync(first.file, 'utf8'))
+    delete saved.plugins[0].source.origin
+    delete saved.plugins[0].source.verified
+    writeFileSync(first.file, JSON.stringify(saved))
+    const { instance } = await registry(first.file)
+    expect(instance.list()[0]!.source).toMatchObject({ origin: 'file', verified: false })
+  })
+
+  it('refuses a catalog package whose manifest is not the id and version the index promised', async () => {
+    const { instance, packagesDir } = await registry()
+    const zip = readFileSync(mjp({ version: '0.0.1' }))
+    expect(await appError(instance.installArchive(zip, 'hello.mjp', { origin: 'catalog', verified: true, expect: { id: 'hello', version: '0.1.0' } }))).toBe('pluginInvalid')
+    expect(existsSync(join(packagesDir, 'hello'))).toBe(false)
+  })
+
   it('deletes the files of an uninstalled package', async () => {
     const { instance, packagesDir } = await registry()
     await instance.installPackage(mjp())

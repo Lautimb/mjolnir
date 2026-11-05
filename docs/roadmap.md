@@ -78,7 +78,7 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`), fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops`) y fase 4 (instalación de `.mjp`, actualizaciones con permisos nuevos, `mjolnir-plugin pack`, fijar vistas en el rail). Sigue la fase 5 (catálogo y firma), que depende de decidir dónde se publica.
+Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`), fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops`), fase 4 (instalación de `.mjp`, actualizaciones con permisos nuevos, `mjolnir-plugin pack`, fijar vistas en el rail) y fase 5 (catálogo en `Lautimb/mjolnir-plugins`, firma ed25519, instalación y updates desde la app).
 
 Lo que cubre el diseño:
 
@@ -120,7 +120,7 @@ Cuenta y PRs hechos en `plugins/azure-devops` (fase 3 de plugins). Falta probarl
 
 - Firma de Windows: sin firma, Smart App Control bloquea el `.exe`. Opciones evaluadas: certificado OV (pago), Artifact Signing de Microsoft (individuos solo EE. UU./Canadá). Por ahora: `pnpm app:win` en la PC propia (usa el `electron.exe` oficial firmado) y el instalador sin firmar en PCs sin Smart App Control.
 - macOS: firma ad-hoc; sin Apple Developer hay que usar "Abrir igual" la primera vez.
-- Repo privado: los releases solo los baja quien tiene acceso. Decidir cómo compartir con colegas (repo público, repo de releases aparte u otro hosting).
+- El repo es público: los instaladores y los plugins first-party se bajan de sus releases.
 - Auto-update (electron-updater ya tiene los `latest*.yml` en el release).
 - Probar los instaladores en Linux.
 

@@ -21,6 +21,7 @@ export interface AppErrorParams {
   pluginExists: { id: string; path: string }
   pluginPermissionsChanged: NoParams
   pluginIncompatible: { required: string; reason: 'app' | 'api' }
+  pluginDownloadFailed: { message: string }
   pluginProviderFailed: { provider: string; message: string }
 }
 

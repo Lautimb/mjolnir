@@ -67,7 +67,25 @@ export type PluginStatus =
   | { kind: 'invalid'; issue: string }
   | { kind: 'incompatible'; reason: 'app' | 'api'; required: string }
 
-export type PluginSource = { kind: 'folder'; path: string } | { kind: 'package'; version: string; sha256: string }
+export type PluginSource =
+  | { kind: 'folder'; path: string }
+  | { kind: 'package'; version: string; sha256: string; origin: 'file' | 'catalog'; verified: boolean }
+
+export interface CatalogPlugin {
+  id: string
+  version: string
+  size: number
+  verified: boolean
+  manifest: PluginManifest
+  strings: Record<string, Record<string, string>>
+  status: Extract<PluginStatus, { kind: 'ready' | 'incompatible' }>
+}
+
+export interface PluginCatalogState {
+  plugins: CatalogPlugin[]
+  fetchedAt: number | null
+  failed: boolean
+}
 
 export interface PluginInfo {
   id: string
@@ -144,6 +162,8 @@ export interface MjolnirApi {
     list(): Promise<PluginInfo[]>
     addFolder(title: string): Promise<PluginInfo | null>
     installFile(title: string, filterName: string): Promise<PluginInfo | null>
+    catalog(refresh: boolean): Promise<PluginCatalogState>
+    installFromCatalog(id: string): Promise<PluginInfo>
     applyUpdate(id: string, approved: GrantablePermissions): Promise<void>
     discardUpdate(id: string): Promise<void>
     enable(id: string, approved: GrantablePermissions): Promise<void>

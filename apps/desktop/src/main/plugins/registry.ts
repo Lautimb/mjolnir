@@ -19,6 +19,12 @@ import { PACKAGE_LIMITS, PackageError, readPackage } from './package'
 
 type PackageRef = Extract<PluginSource, { kind: 'package' }>
 
+export interface PackageOrigin {
+  origin: PackageRef['origin']
+  verified: boolean
+  expect?: { id: string; version: string }
+}
+
 interface PluginRecord {
   id: string
   source: PluginSource
@@ -44,7 +50,7 @@ export interface RegistryOptions {
   onChange(): void
 }
 
-const SUPPORTED_API = [API_VERSION]
+export const SUPPORTED_API = [API_VERSION]
 const RELOAD_DELAY_MS = 150
 
 async function readManifest(folder: string): Promise<{ manifest: PluginManifest } | { status: PluginStatus }> {
@@ -77,11 +83,29 @@ const isPackageRef = (value: unknown): value is PackageRef => {
   return ref?.kind === 'package' && typeof ref.version === 'string' && /^[0-9a-f]{64}$/.test(ref.sha256)
 }
 
+const packageRef = (ref: PackageRef): PackageRef => ({
+  kind: 'package',
+  version: ref.version,
+  sha256: ref.sha256,
+  origin: ref.origin === 'catalog' ? 'catalog' : 'file',
+  verified: ref.verified === true,
+})
+
 function isRecord(value: unknown): value is PluginRecord {
   const record = value as PluginRecord
   if (!record || !/^[a-z0-9-]+$/.test(record.id ?? '')) return false
   const source = record.source as PluginSource | undefined
   return (source?.kind === 'folder' && typeof source.path === 'string') || isPackageRef(source)
+}
+
+function normalize(record: PluginRecord): PluginRecord {
+  const { update, ...rest } = record
+  return {
+    ...rest,
+    source: record.source.kind === 'package' ? packageRef(record.source) : record.source,
+    granted: record.granted ?? {},
+    ...(isPackageRef(update) ? { update: packageRef(update) } : {}),
+  }
 }
 
 export class PluginRegistry {
@@ -94,7 +118,7 @@ export class PluginRegistry {
   async init(): Promise<void> {
     const raw = readJson(this.options.file) as { plugins?: unknown[] } | null
     const records = (raw?.plugins ?? []).filter(isRecord)
-    await Promise.all(records.map((record) => this.load({ ...record, granted: record.granted ?? {} }, 0)))
+    await Promise.all(records.map((record) => this.load(normalize(record), 0)))
     for (const record of records) this.watch(record)
   }
 
@@ -149,12 +173,18 @@ export class PluginRegistry {
 
   async installPackage(file: string): Promise<PluginInfo> {
     if ((await stat(file)).size > PACKAGE_LIMITS.packageBytes) throw new AppError('pluginInvalid', { issue: `${basename(file)}: too large` })
-    const { files, sha256 } = await readFile(file)
-      .then((zip) => readPackage(zip))
-      .catch((error: unknown) => {
-        if (error instanceof PackageError) throw new AppError('pluginInvalid', { issue: `${basename(file)}: ${error.message}` })
-        throw error
-      })
+    return this.installArchive(await readFile(file), basename(file), { origin: 'file', verified: false })
+  }
+
+  async installArchive(zip: Buffer, label: string, { origin, verified, expect }: PackageOrigin): Promise<PluginInfo> {
+    let contents: ReturnType<typeof readPackage>
+    try {
+      contents = readPackage(zip)
+    } catch (error) {
+      if (error instanceof PackageError) throw new AppError('pluginInvalid', { issue: `${label}: ${error.message}` })
+      throw error
+    }
+    const { files, sha256 } = contents
     const raw = files.get(MANIFEST_FILE)
     let parsed: ReturnType<typeof parseManifest>
     try {
@@ -164,12 +194,15 @@ export class PluginRegistry {
     }
     if (!parsed.ok) throw new AppError('pluginInvalid', { issue: parsed.issue })
     const { manifest } = parsed
+    if (expect && (manifest.id !== expect.id || manifest.version !== expect.version)) {
+      throw new AppError('pluginInvalid', { issue: `${label}: contains ${manifest.id} ${manifest.version} instead of ${expect.id} ${expect.version}` })
+    }
     const compatibility = checkCompatibility(manifest, { appVersion: this.options.appVersion, apiVersions: SUPPORTED_API })
     if (!compatibility.ok) throw new AppError('pluginIncompatible', { required: String(compatibility.required), reason: compatibility.reason })
 
     const existing = this.plugins.get(manifest.id)
     if (existing?.record.source.kind === 'folder') throw new AppError('pluginExists', { id: manifest.id, path: existing.record.source.path })
-    const ref: PackageRef = { kind: 'package', version: manifest.version, sha256 }
+    const ref: PackageRef = { kind: 'package', version: manifest.version, sha256, origin, verified }
     await this.extract(manifest.id, ref, files)
 
     if (!existing) {

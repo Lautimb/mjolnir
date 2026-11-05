@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { PluginInfo } from '../../../shared/api'
-import { pluginText, pluginViews, touch } from './model'
+import type { CatalogPlugin, PluginInfo } from '../../../shared/api'
+import { catalogUpdate, pluginText, pluginViews, touch } from './model'
 
 const plugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
   id: 'hello',
@@ -45,5 +45,31 @@ describe('pluginText', () => {
     expect(pluginText(plugin(), '%name%', 'en')).toBe('Hello')
     expect(pluginText(plugin({ strings: { es: { name: 'Hola' } } }), '%name%', 'en')).toBe('Hola')
     expect(pluginText(plugin({ strings: { en: { name: 'Hello' } } }), '%name%', 'fr')).toBe('Hello')
+  })
+})
+
+describe('catalogUpdate', () => {
+  const packaged = (version: string, update: string | null = null) =>
+    plugin({ source: { kind: 'package', version, sha256: 'a'.repeat(64), origin: 'catalog', verified: true }, update: update ? { version: update, pending: {} } : null })
+  const available = (version: string, status: CatalogPlugin['status'] = { kind: 'ready' }): CatalogPlugin => ({
+    id: 'hello',
+    version,
+    size: 1,
+    verified: true,
+    manifest: plugin().manifest!,
+    strings: {},
+    status,
+  })
+
+  it('offers a newer compatible version of an installed package', () => {
+    expect(catalogUpdate(packaged('0.1.0'), available('0.2.0'))?.version).toBe('0.2.0')
+    expect(catalogUpdate(packaged('0.2.0'), available('0.2.0'))).toBeNull()
+    expect(catalogUpdate(packaged('0.1.0'), available('0.2.0', { kind: 'incompatible', reason: 'app', required: '>=9.0.0' }))).toBeNull()
+  })
+
+  it('does not offer what is already waiting for approval, nor replace a folder being developed', () => {
+    expect(catalogUpdate(packaged('0.1.0', '0.2.0'), available('0.2.0'))).toBeNull()
+    expect(catalogUpdate(packaged('0.1.0', '0.2.0'), available('0.3.0'))?.version).toBe('0.3.0')
+    expect(catalogUpdate(plugin(), available('9.0.0'))).toBeNull()
   })
 })
