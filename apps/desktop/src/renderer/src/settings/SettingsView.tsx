@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
+import { Minus, Plus } from 'lucide-react'
 import { LOCALE_IDS, type LanguagePreference } from '../../../shared/locales'
-import type { Settings } from '../../../shared/settings'
+import { TERMINAL_FONT_SIZE, type Settings } from '../../../shared/settings'
 import { LOCALES } from '../i18n/catalog'
 import { useI18n } from '../i18n/I18nProvider'
+import { zoomed } from '../terminals/shortcuts'
+import { IconButton } from '../ui/Button'
 import { cx, eyebrow } from '../ui/cx'
 import { Description } from '../ui/Description'
 import { Select } from '../ui/fields'
@@ -84,6 +87,27 @@ export function SettingsView({ settings, onChange }: Props) {
               ]}
               onChange={(terminalCursorStyle) => onChange({ terminalCursorStyle })}
             />
+          </Setting>
+          <Setting title={t('settings.fontSize.title')} description={t('settings.fontSize.description', { size: TERMINAL_FONT_SIZE.default })}>
+            <div className="flex flex-none items-center gap-1">
+              <IconButton
+                aria-label={t('settings.fontSize.decrease')}
+                title={t('settings.fontSize.decrease')}
+                disabled={settings.terminalFontSize <= TERMINAL_FONT_SIZE.min}
+                onClick={() => onChange({ terminalFontSize: zoomed(settings.terminalFontSize, 'zoomOut') })}
+              >
+                <Minus size={14} />
+              </IconButton>
+              <span className="w-8 text-center text-sm tabular-nums">{settings.terminalFontSize}</span>
+              <IconButton
+                aria-label={t('settings.fontSize.increase')}
+                title={t('settings.fontSize.increase')}
+                disabled={settings.terminalFontSize >= TERMINAL_FONT_SIZE.max}
+                onClick={() => onChange({ terminalFontSize: zoomed(settings.terminalFontSize, 'zoomIn') })}
+              >
+                <Plus size={14} />
+              </IconButton>
+            </div>
           </Setting>
           <Setting title={t('settings.cursorBlink.title')} description={t('settings.cursorBlink.description')}>
             <Segmented
