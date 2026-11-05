@@ -65,6 +65,7 @@ export const settings = z.object({
   terminalCursorStyle: z.enum(['block', 'bar', 'underline']),
   terminalCursorBlink: z.boolean(),
   diffSideBySide: z.boolean(),
+  hiddenPluginViews: z.array(z.string().max(300)).max(1000),
 }) satisfies z.ZodType<Settings>
 
 export const settingsPatch = settings.partial().strict()

@@ -60,12 +60,14 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const views = useMemo(() => pluginViews(plugins), [plugins])
   const railViews = useMemo<RailPluginView[]>(
     () =>
-      views.map(({ key, plugin, view: entry }) => ({
-        key,
-        title: pluginText(plugin, entry.title, locale),
-        iconUrl: entry.icon ? pluginUrl(plugin, entry.icon) : null,
-      })),
-    [views, locale],
+      views
+        .filter(({ key }) => !settings.hiddenPluginViews.includes(key))
+        .map(({ key, plugin, view: entry }) => ({
+          key,
+          title: pluginText(plugin, entry.title, locale),
+          iconUrl: entry.icon ? pluginUrl(plugin, entry.icon) : null,
+        })),
+    [views, locale, settings.hiddenPluginViews],
   )
   const pluginContext = useMemo<Omit<PluginContext, 'session'>>(() => ({ locale, theme: readTheme(getComputedStyle(document.documentElement)) }), [locale])
   const notifyFromPlugin = useCallback((message: string, kind: NotifyKind) => setNotice(message, kind === 'error' ? 'danger' : 'info'), [setNotice])
@@ -152,7 +154,14 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} />
       <Rail view={view} changes={changes} pluginViews={railViews} onChange={changeView} />
       {view === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
-      {view === 'plugins' && <PluginsView plugins={plugins} />}
+      {view === 'plugins' && (
+        <PluginsView
+          plugins={plugins}
+          hiddenViews={settings.hiddenPluginViews}
+          onHiddenViewsChange={(hiddenPluginViews) => updateSettings({ hiddenPluginViews })}
+          onOpenView={changeView}
+        />
+      )}
       <Sidebar
         hidden={view === 'settings' || view === 'plugins'}
         repos={repos}

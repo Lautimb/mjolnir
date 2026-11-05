@@ -92,7 +92,7 @@ Pensado para que tener muchos plugins instalados cueste casi nada mientras no se
 - **Llamadas**: un puerto por iframe directo a main; validar con zod cuesta microsegundos frente a la red.
 - **Storage**: un archivo por plugin que se lee la primera vez que el plugin lo usa y se escribe con debounce.
 - **Red**: `session.fetch` con una partición en memoria por plugin. Usa el stack de red de Chromium (proxy y certificados del sistema, que hacen falta en redes corporativas) y no comparte cookies entre plugins ni con la app.
-- **Rail**: los ítems de plugins van debajo de los built-in y el rail scrollea. Con muchos plugins hace falta poder fijar o desfijar vistas; queda para la fase 4.
+- **Rail**: los ítems de plugins van debajo de los built-in y el rail scrollea. Cada vista se puede quitar del rail o volver a fijar desde la vista de Plugins (se guarda en `hiddenPluginViews` de los ajustes), y desde ahí se abre aunque no esté en el rail.
 
 ### Código con Node
 
@@ -162,12 +162,15 @@ Siempre otorgados, sin preguntar: su propio storage, sus secretos, los tokens de
 ## Instalación y distribución
 
 ```
-<userData>/plugins/<id>/<version>/   archivos del plugin
-<userData>/plugins.json              id → versión activa, habilitado, permisos otorgados, origen, sha256
+<userData>/plugins/<id>/<versión>-<sha256[:12]>/   archivos de un paquete instalado (la activa y, si hay, la pendiente)
+<userData>/plugins.json              id → origen (carpeta o paquete con versión y sha256), habilitado, permisos otorgados, actualización pendiente
 <userData>/plugin-data/<id>/         storage.json y secrets.json del plugin
 ```
 
-- **v1 — archivo local**: "Instalar desde archivo…" con un `.mjp`. Se calcula el sha256, se descomprime validando paths (sin `..`, sin symlinks, tamaño máximo) y se valida el manifest. Se marca como "no verificado".
+- **v1 — archivo local**: "Instalar desde archivo…" con un `.mjp` (un zip con `mjolnir-plugin.json` en la raíz). Main lo lee con su propio lector de zip, sin dependencias: rechaza paths inseguros, symlinks, entradas cifradas, ZIP64 y duplicados, verifica el CRC de cada archivo y no infla más que el tamaño declarado (50 MB el paquete, 20 MB por archivo, 100 MB en total, 2000 archivos), así un zip bomb no agota memoria. Después valida el manifest y la compatibilidad, y recién ahí extrae a una carpeta temporal que renombra al final. Se marca como "Sin verificar" hasta que haya firma (fase 5).
+- **Actualizar**: instalar otro `.mjp` del mismo id. Si la versión nueva no pide permisos nuevos (o el plugin está deshabilitado) se activa en el momento y las vistas abiertas se recargan; si pide más, queda como actualización pendiente con "Actualizar" (pide aprobar lo nuevo) o "Descartar", y mientras tanto sigue corriendo la versión actual. Las carpetas de versiones que ya no se usan se borran.
+- **Desinstalar**: borra los archivos del paquete; lo que el plugin guardó en `plugin-data` se conserva por si se reinstala. Un id cargado desde una carpeta no se puede pisar con un paquete (`pluginExists`).
+- **Empaquetar**: `mjolnir-plugin pack [dist] [--out archivo.mjp]`, el bin de `@mjolnir/plugin-sdk`. Los first-party lo usan con `pnpm --filter @mjolnir/plugin-hello run package`, que deja `plugins/hello/hello-<versión>.mjp`.
 - **v1 — modo desarrollo**: "Cargar carpeta…" apunta a una carpeta con el plugin sin empaquetar y recarga los iframes cuando cambian los archivos. Es como se desarrollan los plugins first-party.
 - **Después — catálogo**: un `index.json` (id, versión, URL del `.mjp`, sha256, firma) en un repo público. Firma ed25519; la clave pública de Mjolnir viene en la app y los plugins first-party van firmados. Los updates se ofrecen desde ahí.
 
@@ -232,7 +235,7 @@ Cada fase es un PR con CI verde.
 1. **Base** ✅ — `packages/plugin-sdk` (tipos, schema del manifest, cliente, tokens del tema, base.css), `PluginRegistry` cargando carpetas en modo desarrollo con recarga al cambiar archivos, protocolo `mjolnir-plugin://`, broker con `storage`, `secrets`, `http` y `ui`, aprobación de permisos, vista de Plugins en el rail (listar, habilitar, deshabilitar, cargar carpeta, quitar) y contribución `views`. Plugin de ejemplo en `plugins/hello` que usa toda la API y sirve de template.
 2. **Cliente HTTP** ✅ — `plugins/http-client` (request, respuesta, historial, entornos) más `repoFiles` y `context` para las colecciones por repo. Valida la API de UI y de red. **∥** con la fase 3 una vez mergeada la 1.
 3. **Proveedores** ✅ — registro de proveedores, `PluginProviderAdapter`, auth por CLI declarado, permiso `accounts`. Prueba con `plugins/azure-devops` (cuenta + PRs).
-4. **Instalación** — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
+4. **Instalación** ✅ — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
 5. **Catálogo y firma** — cuando esté decidido dónde se publica.
 
 Boards (user stories) entra como vista del plugin de Azure DevOps después de la fase 3; no necesita nada nuevo del host.

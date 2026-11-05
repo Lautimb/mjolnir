@@ -6,6 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
+    "package": "vite build && mjolnir-plugin pack dist",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

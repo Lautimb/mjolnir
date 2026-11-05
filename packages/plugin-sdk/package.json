@@ -3,13 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "mjolnir-plugin": "./pack/cli.mjs"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
     "./providers": "./src/providers.ts",
     "./react": "./src/react/index.tsx",
     "./base.css": "./src/base.css",
-    "./components.css": "./src/react/components.css"
+    "./components.css": "./src/react/components.css",
+    "./pack": {
+      "types": "./pack/zip.d.mts",
+      "default": "./pack/zip.mjs"
+    }
   },
   "scripts": {
     "test": "vitest run",

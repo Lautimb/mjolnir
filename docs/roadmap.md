@@ -78,7 +78,7 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`) y fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops` con cuenta y PRs). Sigue la fase 4 (instalación de `.mjp`).
+Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`), fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops`) y fase 4 (instalación de `.mjp`, actualizaciones con permisos nuevos, `mjolnir-plugin pack`, fijar vistas en el rail). Sigue la fase 5 (catálogo y firma), que depende de decidir dónde se publica.
 
 Lo que cubre el diseño:
 

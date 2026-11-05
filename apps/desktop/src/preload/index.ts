@@ -74,6 +74,9 @@ const api: MjolnirApi = {
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),
     addFolder: (title) => ipcRenderer.invoke('plugins:addFolder', title),
+    installFile: (title, filterName) => ipcRenderer.invoke('plugins:installFile', title, filterName),
+    applyUpdate: (id, approved) => ipcRenderer.invoke('plugins:applyUpdate', id, approved),
+    discardUpdate: (id) => ipcRenderer.invoke('plugins:discardUpdate', id),
     enable: (id, approved) => ipcRenderer.invoke('plugins:enable', id, approved),
     disable: (id) => ipcRenderer.invoke('plugins:disable', id),
     remove: (id) => ipcRenderer.invoke('plugins:remove', id),

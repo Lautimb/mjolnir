@@ -6,6 +6,8 @@ import { LOCALIZED } from './strings'
 
 export const MANIFEST_FILE = 'mjolnir-plugin.json'
 
+export const PACKAGE_EXTENSION = 'mjp'
+
 const SEGMENT = /^[A-Za-z0-9._-]+$/
 
 export function isSafeRelativePath(path: string): boolean {

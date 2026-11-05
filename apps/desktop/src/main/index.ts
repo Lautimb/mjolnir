@@ -32,7 +32,13 @@ interface PluginDeps {
 }
 
 function createPlugins({ userData, workspace, window, accountToken, onChange }: PluginDeps) {
-  const registry = new PluginRegistry({ file: join(userData, 'plugins.json'), appVersion: app.getVersion(), watch: true, onChange })
+  const registry = new PluginRegistry({
+    file: join(userData, 'plugins.json'),
+    packagesDir: join(userData, 'plugins'),
+    appVersion: app.getVersion(),
+    watch: true,
+    onChange,
+  })
   const data = new PluginData(join(userData, 'plugin-data'), {
     encrypt: (value) => {
       if (!safeStorage.isEncryptionAvailable()) throw new HostFailure('unavailable', 'secure storage is not available on this system')

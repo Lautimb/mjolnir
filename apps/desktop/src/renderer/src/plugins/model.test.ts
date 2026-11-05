@@ -5,6 +5,7 @@ import { pluginText, pluginViews, touch } from './model'
 const plugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
   id: 'hello',
   source: { kind: 'folder', path: '/p' },
+  update: null,
   enabled: true,
   active: true,
   status: { kind: 'ready' },
