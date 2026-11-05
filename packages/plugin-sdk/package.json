@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
+    "./providers": "./src/providers.ts",
     "./react": "./src/react/index.tsx",
     "./base.css": "./src/base.css",
     "./components.css": "./src/react/components.css"

@@ -11,6 +11,7 @@ export interface BrokerDeps {
   permissions(pluginId: string): PluginPermissions | null
   fetch(pluginId: string): Fetch
   worktreeRoot(session: SessionRef): Promise<string>
+  accountToken(provider: string, host: string): Promise<string | null>
   openExternal(url: string): void
 }
 
@@ -71,6 +72,14 @@ function routes(deps: BrokerDeps): Routes {
       run: async (id, session, path, content) => writeRepoFile(await root(id, session), path, content, globs(id)),
     },
     'repoFiles.delete': { params: z.tuple([sessionRef, repoPath]), run: async (id, session, path) => deleteRepoFile(await root(id, session), path, globs(id)) },
+    'accounts.token': {
+      params: z.tuple([z.string().min(1).max(200), z.string().min(1).max(253)]),
+      run: (id, provider, host) => {
+        const own = provider.startsWith(`${id}.`)
+        if (!own && !deps.permissions(id)?.accounts?.includes(provider)) throw new HostFailure('permissionDenied', provider)
+        return deps.accountToken(provider, host)
+      },
+    },
     'ui.openExternal': { params: z.tuple([url]), run: (_id, target) => deps.openExternal(target) },
   }
 }

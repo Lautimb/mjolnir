@@ -23,7 +23,7 @@ Un plugin es una carpeta (en desarrollo) o un `.mjp` (zip) con un `mjolnir-plugi
   "name": "%name%",
   "description": "%description%",
   "locales": { "es": "locales/es.json", "en": "locales/en.json" },
-  "background": "background.js",
+  "background": "background.html",
   "contributes": {
     "views": [{ "id": "boards", "title": "%boards.title%", "icon": "icons/boards.svg", "entry": "boards.html" }],
     "settings": [{ "id": "general", "title": "%settings.title%", "entry": "settings.html" }],
@@ -31,9 +31,13 @@ Un plugin es una carpeta (en desarrollo) o un `.mjp` (zip) con un `mjolnir-plugi
       {
         "id": "azure-devops",
         "displayName": "Azure DevOps",
-        "remotes": ["dev.azure.com", "ssh.dev.azure.com", "*.visualstudio.com"],
+        "defaultHost": "dev.azure.com",
+        "remotes": [
+          { "host": "dev.azure.com", "path": "{org}/{project}/_git/{repo}", "repo": { "owner": "{org}/{project}", "name": "{repo}" } },
+          { "host": "{org}.visualstudio.com", "path": "{project}/_git/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } }
+        ],
         "auth": { "token": true, "cli": { "command": "az", "args": ["account", "get-access-token", "--resource", "499b84ac-1321-427f-aa17-267ca6975798", "--query", "accessToken", "-o", "tsv"] } },
-        "capabilities": ["pulls"]
+        "pulls": { "refspec": "refs/pull/{number}/merge" }
       }
     ],
     "commands": [{ "id": "open-work-item", "title": "%commands.openWorkItem%" }]
@@ -77,7 +81,7 @@ Un plugin instalado no ejecuta nada hasta que se lo necesita:
 
 - Lo que se muestra sin ejecutar código sale del manifest: nombre, ítems del rail, secciones de ajustes, proveedores y los remotos que matchean.
 - Una vista se monta al abrirla. Las últimas 3 vistas usadas quedan montadas (ocultas) para volver al instante, y las demás se desmontan.
-- El background (fase 3) se levanta la primera vez que se usa un proveedor o un comando del plugin y se baja después de un rato sin uso. No hay activación "al iniciar".
+- El background se levanta la primera vez que se usa un proveedor del plugin (main le pide al renderer que monte el iframe oculto y espera su puerto) y se baja después de 5 minutos sin llamadas. No hay activación "al iniciar". Si el plugin se deshabilita o recarga, se baja y las llamadas pendientes fallan con `unavailable`.
 
 ### Escala y performance
 
@@ -105,7 +109,14 @@ Si más adelante hace falta, el camino es un `main` opcional en `utilityProcess`
 | `providers` | Matchea remotos con `remotes` (sin ejecutar código), arma la cuenta con la UI existente (token / CLI declarado), guarda el secreto con `safeStorage` | Implementa `identify` y `PullRequestProvider` en el background |
 | `commands` | Los lista (paleta de comandos a futuro, acciones en la sesión) | Ejecuta el handler |
 
-**Proveedores**: `main/providers.ts` pasa de una lista fija a un registro. Los built-in (GitHub) siguen igual; los de plugins se registran con un `PluginProviderAdapter` que implementa `PullRequestProvider` reenviando cada llamada al background del plugin, con timeout y respuestas validadas contra los schemas de los tipos de PR. Para la vista de PRs no hay diferencia entre un proveedor built-in y uno de plugin.
+**Proveedores**: `main/providers.ts` es un registro (`ProviderRegistry`). Los built-in (GitHub) siguen igual; los de plugins activos se arman con `pluginProviderAdapter`, que implementa `PullRequestProvider` reenviando cada llamada al background del plugin (timeout de 60 s) y valida las respuestas con zod contra los tipos de PR, incluidas las URLs (solo http/https). Para la vista de PRs no hay diferencia entre un proveedor built-in y uno de plugin.
+
+- **Id**: `<plugin>.<proveedor>` (por ejemplo `azure-devops.azure-devops`), así dos plugins nunca chocan entre sí ni con los built-in. Es el id que queda en `accounts.json`.
+- **Remotos**: reglas declarativas `host` + `path` con `{variables}` (una etiqueta del host o un segmento del path) y una plantilla `repo` con `owner`, `name` y opcionalmente `host`. Así varias formas de remoto (HTTPS, SSH, `*.visualstudio.com`) caen en el mismo repo y la misma cuenta, sin ejecutar código del plugin.
+- **Auth**: `token` (PAT, guardado con `safeStorage`) y/o `cli` declarado. El comando lo corre el host en los hosts de repos, como `gh auth token`, y se muestra en la aprobación de permisos ("Ejecutar `az account get-access-token …`"); cambiarlo en una actualización vuelve a pedir aprobación.
+- **Credencial**: cada llamada recibe `{ host, token, source }`; el plugin decide el header (por ejemplo PAT → Basic, CLI → Bearer). Un `HostError('unauthorized')` del plugin se trata como cuenta vencida.
+- **Diff de PRs**: `pulls.refspec` (`refs/pull/{number}/merge`) es lo que el host trae con git para armar el diff.
+- En el plugin: `mjolnir.providers.register('azure-devops', { identify, pulls: { list, get, forBranch, comments, comment, create } })`. Si el host llama antes de que registre, el SDK espera hasta 10 s.
 
 ## API del host (v1)
 
@@ -117,7 +128,8 @@ interface HostApi {
   storage: { get(key); set(key, value); delete(key); keys() }    // JSON por plugin, en <userData>/plugin-data/<id>/storage.json
   secrets: { get(key); set(key, value); delete(key) }            // safeStorage, namespaced por plugin
   http: { request(req: HttpRequest): Promise<HttpResponse> }     // desde main, sujeto a permissions.network
-  accounts: { token(provider, host): Promise<string | null> }    // solo de los proveedores que el plugin declara
+  accounts: { token(provider, host): Promise<string | null> }    // de sus propios proveedores, o de otros con permissions.accounts
+  providers: { register(id, implementation): Unsubscribe }        // solo en el background
   workspace: { repos(); worktrees(repoId); branches(repoId) }    // permissions.workspace = "read"
   repoFiles: { list(session, dir); read(session, path); write(session, path, text); delete(session, path) }  // dentro de permissions.repoFiles
   ui: { notify(message, kind); openExternal(url); openView(viewId, params) }
@@ -127,9 +139,9 @@ interface HostApi {
 - Cada método tiene su schema zod en main. Lo que no pasa el schema o el chequeo de permiso devuelve un `AppError` con código (`pluginPermissionDenied`, `invalidRequest`…), que el SDK expone tal cual.
 - `http.request` devuelve status, headers y body (texto o base64) más timings, que es lo que necesita el cliente HTTP para mostrar la respuesta.
 - `repoFiles` existe por las colecciones por repo del cliente HTTP (por ejemplo `.mjolnir/http/**`). `session` es la que llega en el contexto (`repoId` + `worktree`); main verifica que el worktree exista en ese repo. Los paths son relativos, con `/`, y se validan en el SDK (`isSafeRepoPath`): nunca `.git` ni los nombres que Windows resuelve a `.git` (punto o espacio final, nombres cortos 8.3), porque escribir ahí es ejecutar código vía hooks. Main no sigue symlinks, escribe de forma atómica y limita el tamaño (5 MB por archivo, 5000 archivos por listado). `list` solo recorre las carpetas que pueden contener algo que matchee los globs: con `.mjolnir/http/**` no entra a `node_modules`.
-- Implementado hasta ahora (fase 2): `context`, `storage`, `secrets`, `http`, `repoFiles` y `ui.notify` / `ui.openExternal`. `accounts`, `workspace.*` y `ui.openView` llegan con las fases que los usan.
+- Implementado hasta ahora (fase 3): `context`, `storage`, `secrets`, `http`, `repoFiles`, `accounts.token`, `providers.register` y `ui.notify` / `ui.openExternal`. `workspace.*` y `ui.openView` llegan con las fases que los usan.
 
-**Versionado**: los tipos que cruzan la frontera (`RemoteRepo`, `PullRequest*`, `Account`) pasan a vivir en el SDK y core los reexporta. Cambiarlos de forma incompatible es subir `api` a 2; el host puede soportar 1 y 2 a la vez durante una transición.
+**Versionado**: los tipos que cruzan la frontera (`RemoteRepo`, `PullRequest*`, `CredentialSource`) viven en `@mjolnir/plugin-sdk/providers` y core los reexporta. `additions`, `deletions` y `changedFiles` del detalle de un PR pueden ser `null` (Azure no los da) y la UI los oculta. Cambiarlos de forma incompatible es subir `api` a 2; el host puede soportar 1 y 2 a la vez durante una transición.
 
 ## Permisos
 
@@ -138,7 +150,8 @@ interface HostApi {
 | `network` | lista de orígenes, con comodín de subdominio; `["*"]` para todo | "Conectarse a dev.azure.com…" / "Conectarse a cualquier sitio" (resaltado) |
 | `workspace` | `"read"` | "Ver el repo y la sesión activos" (y más adelante la lista de repos y branches) |
 | `repoFiles` | lista de globs relativos al repo | "Leer y escribir `.mjolnir/http/**` en tus repos" |
-| `accounts` | ids de proveedores de otros plugins o built-in | "Usar tu cuenta de GitHub" |
+| `accounts` | ids de proveedores de otros plugins o built-in (`github`, `azure-devops.azure-devops`) | "Usar tus cuentas de github" |
+| `cli` | lo arma el host desde `providers[].auth.cli`, no se declara | "Ejecutar `az account get-access-token …` para obtener tu token" |
 
 Siempre otorgados, sin preguntar: su propio storage, sus secretos, los tokens de sus propios proveedores, notificaciones y abrir links externos (pasa por `openExternal`, que ya filtra protocolos).
 
@@ -218,7 +231,7 @@ Cada fase es un PR con CI verde.
 
 1. **Base** ✅ — `packages/plugin-sdk` (tipos, schema del manifest, cliente, tokens del tema, base.css), `PluginRegistry` cargando carpetas en modo desarrollo con recarga al cambiar archivos, protocolo `mjolnir-plugin://`, broker con `storage`, `secrets`, `http` y `ui`, aprobación de permisos, vista de Plugins en el rail (listar, habilitar, deshabilitar, cargar carpeta, quitar) y contribución `views`. Plugin de ejemplo en `plugins/hello` que usa toda la API y sirve de template.
 2. **Cliente HTTP** ✅ — `plugins/http-client` (request, respuesta, historial, entornos) más `repoFiles` y `context` para las colecciones por repo. Valida la API de UI y de red. **∥** con la fase 3 una vez mergeada la 1.
-3. **Proveedores** — registro de proveedores, `PluginProviderAdapter`, auth por CLI declarado, permiso `accounts`. Prueba con `plugins/azure-devops` (cuenta + PRs).
+3. **Proveedores** ✅ — registro de proveedores, `PluginProviderAdapter`, auth por CLI declarado, permiso `accounts`. Prueba con `plugins/azure-devops` (cuenta + PRs).
 4. **Instalación** — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
 5. **Catálogo y firma** — cuando esté decidido dónde se publica.
 

@@ -1,64 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { seesWorkspace, type NotifyKind, type PluginContext, type PluginMessage, type ShellMessage, type WorkspaceSession } from '@mjolnir/plugin-sdk'
+import { useRef } from 'react'
 import { MAIN_COLUMN } from '../app/layout'
-import { requestPort } from './connect'
-import { pluginOrigin, pluginUrl, type PluginView } from './model'
+import { pluginUrl, type PluginView } from './model'
+import { usePluginChannel, type ChannelOptions } from './usePluginChannel'
 
-const MAX_NOTICE = 500
-
-function asNotice(data: unknown): Extract<PluginMessage, { type: 'mjolnir:notify' }> | null {
-  const message = data as PluginMessage | null
-  if (message?.type !== 'mjolnir:notify' || typeof message.message !== 'string') return null
-  const kind: NotifyKind = message.kind === 'error' ? 'error' : 'info'
-  return { type: message.type, message: message.message.slice(0, MAX_NOTICE), kind }
-}
-
-interface Props {
+interface Props extends Omit<ChannelOptions, 'frame' | 'plugin' | 'role'> {
   entry: PluginView
   title: string
   active: boolean
-  context: Omit<PluginContext, 'session'>
-  session: WorkspaceSession | null
-  onNotify(message: string, kind: NotifyKind): void
 }
 
-export function PluginFrame({ entry, title, active, context: base, session, onNotify }: Props) {
-  const permissions = entry.plugin.manifest?.permissions
-  const visibleSession = permissions && seesWorkspace(permissions) ? session : null
-  const context = useMemo<PluginContext>(() => ({ ...base, session: visibleSession }), [base, visibleSession])
+export function PluginFrame({ entry, title, active, ...channel }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
-  const latestContext = useRef(context)
-  const connected = useRef(false)
-  const origin = pluginOrigin(entry.plugin.id)
-
-  const post = (target: Window, message: ShellMessage, transfer: Transferable[] = []) => target.postMessage(message, origin, transfer)
-
-  useEffect(() => {
-    latestContext.current = context
-    const target = frame.current?.contentWindow
-    if (connected.current && target) post(target, { type: 'mjolnir:context', context })
-  }, [context])
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== frame.current?.contentWindow) return
-      const notice = asNotice(event.data)
-      if (notice) onNotify(notice.message, notice.kind)
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [onNotify])
-
-  const connect = async () => {
-    const target = frame.current?.contentWindow
-    if (!target) return
-    connected.current = false
-    const port = await requestPort(entry.plugin.id).catch(() => null)
-    if (!port) return
-    if (frame.current?.contentWindow !== target) return port.close()
-    post(target, { type: 'mjolnir:connect', context: latestContext.current }, [port])
-    connected.current = true
-  }
+  const connect = usePluginChannel({ ...channel, frame, plugin: entry.plugin, role: 'view' })
 
   return (
     <section hidden={!active} className={MAIN_COLUMN}>

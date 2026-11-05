@@ -7,8 +7,10 @@ import {
   localizedKeys,
   MANIFEST_FILE,
   parseManifest,
+  requestedPermissions,
   type PluginManifest,
   type PluginPermissions,
+  type ProviderContribution,
 } from '@mjolnir/plugin-sdk/manifest'
 import type { PluginInfo, PluginStatus } from '../../shared/api'
 import { AppError } from '../../shared/errors'
@@ -92,7 +94,7 @@ export class PluginRegistry {
       status,
       manifest,
       strings,
-      pending: manifest ? missingPermissions(manifest.permissions, record.granted) : {},
+      pending: manifest ? missingPermissions(requestedPermissions(manifest), record.granted) : {},
       revision,
     }))
   }
@@ -104,8 +106,14 @@ export class PluginRegistry {
   permissions(pluginId: string): PluginPermissions | null {
     const plugin = this.plugins.get(pluginId)
     if (!plugin?.record.enabled || plugin.status.kind !== 'ready' || !plugin.manifest) return null
-    if (hasPermissions(missingPermissions(plugin.manifest.permissions, plugin.record.granted))) return null
+    if (hasPermissions(missingPermissions(requestedPermissions(plugin.manifest), plugin.record.granted))) return null
     return plugin.manifest.permissions
+  }
+
+  providers(): { pluginId: string; provider: ProviderContribution; strings: Record<string, Record<string, string>> }[] {
+    return [...this.plugins.values()].flatMap(({ record, manifest, strings }) =>
+      manifest && this.permissions(record.id) ? manifest.contributes.providers.map((provider) => ({ pluginId: record.id, provider, strings })) : [],
+    )
   }
 
   async addFolder(folder: string): Promise<PluginInfo> {
@@ -126,7 +134,7 @@ export class PluginRegistry {
   enable(pluginId: string, approved: GrantablePermissions): void {
     const plugin = this.require(pluginId)
     const granted = mergePermissions(plugin.record.granted, approved)
-    if (plugin.manifest && hasPermissions(missingPermissions(plugin.manifest.permissions, granted))) {
+    if (plugin.manifest && hasPermissions(missingPermissions(requestedPermissions(plugin.manifest), granted))) {
       throw new AppError('pluginPermissionsChanged', {})
     }
     plugin.record = { ...plugin.record, enabled: true, granted }

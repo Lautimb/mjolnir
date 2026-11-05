@@ -77,8 +77,9 @@ const api: MjolnirApi = {
     enable: (id, approved) => ipcRenderer.invoke('plugins:enable', id, approved),
     disable: (id) => ipcRenderer.invoke('plugins:disable', id),
     remove: (id) => ipcRenderer.invoke('plugins:remove', id),
-    connect: (id, nonce) => ipcRenderer.send('plugins:connect', id, nonce),
+    connect: (id, nonce, role) => ipcRenderer.send('plugins:connect', id, nonce, role),
     onChange: (listener) => subscribe('plugins:changed', listener),
+    onBackground: (listener) => subscribe('plugins:background', listener),
   },
   pty: {
     spawn: (request) => ipcRenderer.invoke('pty:spawn', request),

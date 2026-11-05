@@ -271,6 +271,8 @@ export const es = {
       networkAny: 'Conectarse a cualquier sitio',
       workspace: 'Ver el repo y la sesión activos',
       repoFiles: 'Leer y escribir {globs} en tus repos',
+      accounts: 'Usar tus cuentas de {providers}',
+      cli: 'Ejecutar `{command}` para obtener tu token',
     },
   },
   errors: {
@@ -285,6 +287,7 @@ export const es = {
     noAccount: 'Conectá una cuenta de {provider} en Ajustes → Cuentas para ver sus PRs.',
     providerUnauthorized: 'La cuenta de {provider} ya no tiene acceso. Volvé a conectarla en Ajustes → Cuentas.',
     providerRequestFailed: 'El proveedor respondió {status}: {message}',
+    pluginProviderFailed: '{provider} falló: {message}',
     secureStorageUnavailable: 'Este sistema no tiene un llavero disponible para guardar tokens de forma segura.',
     cliNotFound: 'No se encontró {cli} con una sesión iniciada.',
     deviceFlowUnavailable: 'Esta versión de Mjolnir no tiene configurado el login con el navegador.',

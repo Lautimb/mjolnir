@@ -20,6 +20,7 @@ export interface AppErrorParams {
   pluginInvalid: { issue: string }
   pluginExists: { id: string; path: string }
   pluginPermissionsChanged: NoParams
+  pluginProviderFailed: { provider: string; message: string }
 }
 
 export type AppErrorCode = keyof AppErrorParams

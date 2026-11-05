@@ -13,7 +13,7 @@ const plugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
     version: '0.1.0',
     engines: { mjolnir: '>=0.1.0', api: 1 },
     name: '%name%',
-    contributes: { views: [{ id: 'main', title: 'Main', entry: 'index.html' }] },
+    contributes: { views: [{ id: 'main', title: 'Main', entry: 'index.html' }], providers: [] },
     permissions: {},
   },
   strings: { es: { name: 'Hola' }, en: { name: 'Hello' } },

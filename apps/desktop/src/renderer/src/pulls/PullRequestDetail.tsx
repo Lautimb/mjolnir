@@ -118,8 +118,8 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide }: 
               label: (
                 <>
                   {t('pulls.tabs.files')}
-                  <span className="rounded-full bg-hover px-1.5 text-xs">{detail.changedFiles}</span>
-                  <Stats additions={detail.additions} deletions={detail.deletions} />
+                  {detail.changedFiles !== null && <span className="rounded-full bg-hover px-1.5 text-xs">{detail.changedFiles}</span>}
+                  {detail.additions !== null && detail.deletions !== null && <Stats additions={detail.additions} deletions={detail.deletions} />}
                 </>
               ),
             },

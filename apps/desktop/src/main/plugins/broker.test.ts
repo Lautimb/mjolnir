@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { createBroker } from './broker'
 import { PluginData } from './data'
 
-function setup(active: Record<string, string[]> = { hello: ['https://api.io'] }, repoFiles: Record<string, string[]> = {}) {
+function setup(active: Record<string, string[]> = { hello: ['https://api.io'] }, repoFiles: Record<string, string[]> = {}, accounts: Record<string, string[]> = {}) {
   const data = new PluginData(mkdtempSync(join(tmpdir(), 'mjolnir-broker-')), { encrypt: (v) => v, decrypt: (v) => v })
   const opened: string[] = []
   const fetched: string[] = []
@@ -13,7 +13,7 @@ function setup(active: Record<string, string[]> = { hello: ['https://api.io'] },
   const repo = mkdtempSync(join(tmpdir(), 'mjolnir-broker-repo-'))
   const broker = createBroker({
     data,
-    permissions: (id) => (active[id] ? { network: active[id], repoFiles: repoFiles[id] } : null),
+    permissions: (id) => (active[id] ? { network: active[id], repoFiles: repoFiles[id], accounts: accounts[id] } : null),
     fetch: (id) => async (url) => {
       fetched.push(`${id} ${url}`)
       return new Response('ok')
@@ -22,6 +22,7 @@ function setup(active: Record<string, string[]> = { hello: ['https://api.io'] },
       resolved.push(repoId)
       return repo
     },
+    accountToken: async (provider, host) => `token:${provider}@${host}`,
     openExternal: (url) => void opened.push(url),
   })
   return { broker, opened, fetched, resolved }
@@ -98,5 +99,14 @@ describe('createBroker', () => {
     const reply = await broker('hello', { id: 1, method: 'repoFiles.list', params: [{ repoId: 'r1', worktree: '/repo' }, ''] })
     expect(reply).toMatchObject({ error: { code: 'permissionDenied' } })
     expect(resolved).toEqual([])
+  })
+
+  it('gives tokens of the plugin own providers, and of others only with the accounts permission', async () => {
+    const { broker } = setup({ azure: [], tools: [] }, {}, { tools: ['github'] })
+    const token = (plugin: string, provider: string) => broker(plugin, { id: 1, method: 'accounts.token', params: [provider, 'github.com'] })
+    expect(await token('azure', 'azure.azure-devops')).toEqual({ id: 1, result: 'token:azure.azure-devops@github.com' })
+    expect(await token('azure', 'github')).toMatchObject({ error: { code: 'permissionDenied' } })
+    expect(await token('tools', 'github')).toEqual({ id: 1, result: 'token:github@github.com' })
+    expect(await token('tools', 'azure.azure-devops')).toMatchObject({ error: { code: 'permissionDenied' } })
   })
 })

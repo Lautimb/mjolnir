@@ -5,6 +5,8 @@ import type {
   HostMethods,
   HttpRequest,
   HttpResponse,
+  InvokeMessage,
+  InvokeReply,
   Json,
   NotifyKind,
   PluginContext,
@@ -14,6 +16,7 @@ import type {
   SessionRef,
   ShellMessage,
 } from './protocol'
+import type { ProviderImplementation } from './providers'
 import { applyTheme } from './theme'
 
 export class HostError extends Error {
@@ -49,6 +52,12 @@ export interface Mjolnir {
     write(session: SessionRef, path: string, content: string): Promise<void>
     delete(session: SessionRef, path: string): Promise<void>
   }
+  accounts: {
+    token(provider: string, host: string): Promise<string | null>
+  }
+  providers: {
+    register(providerId: string, implementation: ProviderImplementation): () => void
+  }
   ui: {
     notify(message: string, kind?: NotifyKind): void
     openExternal(url: string): Promise<void>
@@ -81,12 +90,66 @@ export function createCaller(port: MessagePort): Call {
 
 const ref = ({ repoId, worktree }: SessionRef): SessionRef => ({ repoId, worktree })
 
+const REGISTER_TIMEOUT_MS = 10_000
+
+function serveProviders(port: MessagePort) {
+  const implementations = new Map<string, ProviderImplementation>()
+  const waiting = new Map<string, Set<() => void>>()
+
+  const implementation = (providerId: string) =>
+    implementations.get(providerId) ??
+    new Promise<ProviderImplementation>((resolve, reject) => {
+      const listeners = waiting.get(providerId) ?? new Set()
+      const ready = () => {
+        clearTimeout(timer)
+        resolve(implementations.get(providerId)!)
+      }
+      const timer = setTimeout(() => {
+        listeners.delete(ready)
+        reject(new HostError('unavailable', `provider ${providerId} was not registered`))
+      }, REGISTER_TIMEOUT_MS)
+      waiting.set(providerId, listeners.add(ready))
+    })
+
+  const run = async ({ provider, method, params }: InvokeMessage): Promise<unknown> => {
+    const target = await implementation(provider)
+    const [group, name] = method.includes('.') ? method.split('.') : [null, method]
+    const owner = (group ? target[group as 'pulls'] : target) as Record<string, unknown> | undefined
+    const handler = name && owner && Object.hasOwn(owner, name) ? owner[name] : undefined
+    if (typeof handler !== 'function') throw new HostError('unknownMethod', `${provider}: ${method}`)
+    return (handler as (...args: unknown[]) => unknown).apply(owner, params)
+  }
+
+  port.addEventListener('message', (event: MessageEvent<InvokeMessage>) => {
+    const message = event.data
+    if (typeof message?.invoke !== 'number') return
+    run(message).then(
+      (result) => port.postMessage({ invoke: message.invoke, result: result ?? null } satisfies InvokeReply),
+      (error: unknown) =>
+        port.postMessage({
+          invoke: message.invoke,
+          error: { code: error instanceof HostError ? error.code : 'requestFailed', message: error instanceof Error ? error.message : String(error) },
+        } satisfies InvokeReply),
+    )
+  })
+
+  return (providerId: string, provided: ProviderImplementation) => {
+    implementations.set(providerId, provided)
+    for (const ready of waiting.get(providerId) ?? []) ready()
+    waiting.delete(providerId)
+    return () => {
+      if (implementations.get(providerId) === provided) implementations.delete(providerId)
+    }
+  }
+}
+
 export interface Shell {
   post(message: PluginMessage): void
 }
 
 export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginContext): Mjolnir & { updateContext(context: PluginContext): void } {
   const call = createCaller(port)
+  const register = serveProviders(port)
   const listeners = new Set<(context: PluginContext) => void>()
   let context = initial
 
@@ -121,6 +184,12 @@ export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginCo
       read: (session, path) => call('repoFiles.read', ref(session), path),
       write: (session, path, content) => call('repoFiles.write', ref(session), path, content),
       delete: (session, path) => call('repoFiles.delete', ref(session), path),
+    },
+    accounts: {
+      token: (provider, host) => call('accounts.token', provider, host),
+    },
+    providers: {
+      register,
     },
     ui: {
       notify: (message, kind = 'info') => shell.post({ type: 'mjolnir:notify', message, kind }),

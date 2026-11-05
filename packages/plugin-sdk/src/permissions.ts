@@ -32,30 +32,35 @@ export interface GrantablePermissions {
   network?: string[]
   workspace?: 'read'
   repoFiles?: string[]
+  accounts?: string[]
+  cli?: string[]
 }
 
-const without = (requested: string[] | undefined, granted: string[] | undefined) => (requested ?? []).filter((entry) => !(granted ?? []).includes(entry))
+const LISTS = ['network', 'repoFiles', 'accounts', 'cli'] as const
 
 export function missingPermissions(requested: GrantablePermissions, granted: GrantablePermissions): GrantablePermissions {
-  const network = without(requested.network, granted.network)
-  const repoFiles = without(requested.repoFiles, granted.repoFiles)
-  return {
-    ...(network.length > 0 && { network }),
-    ...(requested.workspace && !granted.workspace && { workspace: requested.workspace }),
-    ...(repoFiles.length > 0 && { repoFiles }),
+  const missing: GrantablePermissions = {}
+  for (const key of LISTS) {
+    const entries = (requested[key] ?? []).filter((entry) => !(granted[key] ?? []).includes(entry))
+    if (entries.length) missing[key] = entries
   }
+  if (requested.workspace && !granted.workspace) missing.workspace = requested.workspace
+  return missing
 }
 
 export function mergePermissions(current: GrantablePermissions, approved: GrantablePermissions): GrantablePermissions {
-  const union = (a: string[] | undefined, b: string[] | undefined) => (a?.length || b?.length ? [...new Set([...(a ?? []), ...(b ?? [])])] : undefined)
-  const network = union(current.network, approved.network)
-  const repoFiles = union(current.repoFiles, approved.repoFiles)
+  const merged: GrantablePermissions = {}
+  for (const key of LISTS) {
+    const entries = [...new Set([...(current[key] ?? []), ...(approved[key] ?? [])])]
+    if (entries.length) merged[key] = entries
+  }
   const workspace = current.workspace ?? approved.workspace
-  return { ...(network && { network }), ...(workspace && { workspace }), ...(repoFiles && { repoFiles }) }
+  if (workspace) merged.workspace = workspace
+  return merged
 }
 
 export function hasPermissions(permissions: GrantablePermissions): boolean {
-  return (permissions.network?.length ?? 0) > 0 || !!permissions.workspace || (permissions.repoFiles?.length ?? 0) > 0
+  return !!permissions.workspace || LISTS.some((key) => (permissions[key]?.length ?? 0) > 0)
 }
 
 export function seesWorkspace(permissions: GrantablePermissions): boolean {

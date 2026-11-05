@@ -3,12 +3,7 @@ export interface ParsedRemote {
   path: string
 }
 
-export interface RemoteRepo {
-  provider: string
-  host: string
-  owner: string
-  name: string
-}
+export type { RemoteRepo } from '@mjolnir/plugin-sdk/providers'
 
 export function parseRemoteUrl(url: string): ParsedRemote | null {
   const trimmed = url.trim()

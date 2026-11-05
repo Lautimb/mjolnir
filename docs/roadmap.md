@@ -41,7 +41,7 @@ apps/desktop          Electron
   src/renderer/src    React por feature: app, sessions, terminals, diff, pulls, settings, ui, i18n
 packages/core         dominio sin Electron: hosts, perfiles, git, branches, diff, refs, proveedores
 packages/plugin-sdk   API para plugins: manifest, protocolo, cliente, permisos, tema
-plugins/              plugins first-party (hello es el ejemplo mínimo, http-client el cliente HTTP)
+plugins/              plugins first-party (hello es el ejemplo mínimo, http-client, azure-devops)
 docs/                 este documento
 ```
 
@@ -78,7 +78,7 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-Diseño y fases en [`docs/plugins.md`](plugins.md). Fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker con storage/secretos/HTTP, vista de Plugins, `plugins/hello`) y fase 2 (`plugins/http-client` con colecciones por repo, entornos e historial; `repoFiles`, sesión en el contexto y `@mjolnir/plugin-sdk/react`) hechas. Sigue la fase 3 (proveedores, con Azure DevOps).
+Diseño y fases en [`docs/plugins.md`](plugins.md). Hechas: fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker, vista de Plugins, `plugins/hello`), fase 2 (`plugins/http-client`, `repoFiles`, sesión en el contexto, `@mjolnir/plugin-sdk/react`) y fase 3 (proveedores de plugins con background bajo demanda, `plugins/azure-devops` con cuenta y PRs). Sigue la fase 4 (instalación de `.mjp`).
 
 Lo que cubre el diseño:
 
@@ -89,6 +89,8 @@ Lo que cubre el diseño:
 - **API estable**: qué parte de `@mjolnir/core` y de `MjolnirApi` se expone y se versiona.
 
 ### 2. Azure DevOps como primer plugin
+
+Cuenta y PRs hechos en `plugins/azure-devops` (fase 3 de plugins). Falta probarlo contra una organización real y Boards.
 
 - Cuenta (PAT y, si aplica, login con Microsoft).
 - PRs: implementar `PullRequestProvider` para Azure Repos (`matchRemote` para `dev.azure.com` y `*.visualstudio.com`).

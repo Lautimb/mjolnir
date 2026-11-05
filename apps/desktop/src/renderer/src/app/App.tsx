@@ -6,6 +6,7 @@ import type { Settings } from '../../../shared/settings'
 import { useChangedFiles } from '../diff/useChangedFiles'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import { pluginText, pluginUrl, pluginViews, touch, type PluginViewKey } from '../plugins/model'
+import { PluginBackgrounds } from '../plugins/PluginBackgrounds'
 import { PluginFrame } from '../plugins/PluginFrame'
 import { PluginsView } from '../plugins/PluginsView'
 import { usePlugins } from '../plugins/usePlugins'
@@ -221,6 +222,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
             onNotify={notifyFromPlugin}
           />
         ))}
+      <PluginBackgrounds plugins={plugins} context={pluginContext} session={pluginSession} onNotify={notifyFromPlugin} />
       <StatusBar session={session} changes={changes} onOpenDiff={() => changeView('diff')} />
       {addingRepo && <AddRepoDialog existing={repos} onAdd={addRepo} onClose={() => setAddingRepo(false)} />}
       {notice && <Toast notice={notice} onClose={dismissNotice} />}

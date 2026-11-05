@@ -82,6 +82,10 @@ importers:
         version: 4.6.7
 
   packages/core:
+    dependencies:
+      '@mjolnir/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
@@ -108,6 +112,21 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))
+
+  plugins/azure-devops:
+    devDependencies:
+      '@mjolnir/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.5
+        version: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))

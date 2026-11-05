@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { localize } from './strings'
-import { checkCompatibility, isSafeRelativePath, localizedKeys, parseManifest, satisfiesMinimum, type PluginManifest } from './manifest'
+import { checkCompatibility, isSafeRelativePath, localizedKeys, parseManifest, requestedPermissions, satisfiesMinimum, type PluginManifest } from './manifest'
 
 const valid = {
   id: 'azure-devops',
@@ -31,8 +31,26 @@ describe('parseManifest', () => {
   })
 
   it('rejects unknown keys, so a manifest written for a newer Mjolnir fails loudly instead of half working', () => {
-    expect(manifest({ background: 'background.js' })).toMatchObject({ ok: false, issue: expect.stringContaining('background') })
+    expect(manifest({ main: 'main.js' })).toMatchObject({ ok: false, issue: expect.stringContaining('main') })
     expect(manifest({ permissions: { terminals: true } }).ok).toBe(false)
+  })
+
+  it('takes providers that declare their remotes, auth and pull request refs', () => {
+    const provider = {
+      id: 'azure-devops',
+      displayName: 'Azure DevOps',
+      defaultHost: 'dev.azure.com',
+      remotes: [{ host: 'dev.azure.com', path: '{org}/{project}/_git/{repo}', repo: { owner: '{org}/{project}', name: '{repo}' } }],
+      auth: { cli: { command: 'az', args: ['account', 'get-access-token'] } },
+      pulls: { refspec: 'refs/pull/{number}/merge' },
+    }
+    const parsed = manifest({ background: 'background.html', contributes: { providers: [provider] } })
+    expect(parsed).toMatchObject({ ok: true, manifest: { contributes: { providers: [{ auth: { token: true } }] } } })
+    if (parsed.ok) expect(requestedPermissions(parsed.manifest)).toMatchObject({ cli: ['az account get-access-token'] })
+    expect(manifest({ contributes: { providers: [provider] } })).toMatchObject({ ok: false, issue: expect.stringContaining('background') })
+    for (const bad of [{ auth: { cli: { command: 'az; rm', args: [] } } }, { pulls: { refspec: 'refs/pull/merge' } }, { defaultHost: 'https://dev.azure.com' }]) {
+      expect(manifest({ background: 'background.html', contributes: { providers: [{ ...provider, ...bad }] } }).ok).toBe(false)
+    }
   })
 
   it('only takes origins as network permissions', () => {

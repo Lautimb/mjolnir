@@ -12,7 +12,7 @@ import {
 import type { ProviderInfo } from '../shared/api'
 import { AppError } from '../shared/errors'
 import { readJson, writeJsonAtomic } from './json-file'
-import { adapterFor, authMethods, PROVIDERS, type ProviderAdapter } from './providers'
+import { authMethods, type ProviderAdapter, type ProviderRegistry } from './providers'
 
 interface StoredAccount extends Account {
   secret?: string
@@ -31,12 +31,13 @@ export class Accounts {
   constructor(
     private readonly file: string,
     private readonly cliHosts: Host[],
+    private readonly registry: ProviderRegistry,
   ) {
     this.accounts = this.load()
   }
 
   providers(): ProviderInfo[] {
-    return PROVIDERS.map((adapter) => ({
+    return this.registry.all().map((adapter) => ({
       id: adapter.definition.id,
       displayName: adapter.definition.displayName,
       cli: adapter.cli?.command ?? null,
@@ -65,6 +66,7 @@ export class Accounts {
 
   async connectToken(providerId: string, token: string): Promise<Account> {
     const adapter = this.adapter(providerId)
+    if (!adapter.token) throw new AppError('unsupportedRemote', {})
     return this.save(adapter, token.trim(), { source: 'token', secret: this.encrypt(token.trim()) })
   }
 
@@ -99,19 +101,31 @@ export class Accounts {
     this.persist()
   }
 
+  async token(provider: string, host: string): Promise<string | null> {
+    const adapter = this.registry.get(provider)
+    const stored = this.stored(provider, host)
+    return adapter && stored ? this.credential(adapter, stored).catch(() => null) : null
+  }
+
   async use<T>(provider: string, host: string, action: (pulls: PullRequestProvider) => Promise<T>): Promise<T> {
     const adapter = this.adapter(provider)
-    const stored = this.accounts.find((account) => accountKey(account.provider, account.host) === accountKey(provider, host))
+    const stored = this.stored(provider, host)
     if (!stored) throw new AppError('noAccount', { provider: adapter.definition.displayName })
     try {
-      return await action(adapter.connect(await this.token(adapter, stored)).pulls)
+      const { pulls } = adapter.connect({ host, token: await this.credential(adapter, stored), source: stored.source })
+      if (!pulls) throw new AppError('unsupportedRemote', {})
+      return await action(pulls)
     } catch (error) {
       if (error instanceof ProviderRequestError && error.status === 401) this.cliTokens.delete(accountKey(provider, host))
       throw toAppError(adapter, error)
     }
   }
 
-  private async token(adapter: ProviderAdapter, account: StoredAccount): Promise<string> {
+  private stored(provider: string, host: string): StoredAccount | undefined {
+    return this.accounts.find((account) => accountKey(account.provider, account.host) === accountKey(provider, host))
+  }
+
+  private async credential(adapter: ProviderAdapter, account: StoredAccount): Promise<string> {
     if (account.secret) return safeStorage.decryptString(Buffer.from(account.secret, 'base64'))
     const key = accountKey(account.provider, account.host)
     const cached = this.cliTokens.get(key)
@@ -129,7 +143,7 @@ export class Accounts {
   }
 
   private async save(adapter: ProviderAdapter, token: string, credential: Pick<StoredAccount, 'source' | 'secret' | 'cliHost'>): Promise<Account> {
-    const identity = await adapter.connect(token).identify().catch((error: unknown) => {
+    const identity = await adapter.connect({ host: adapter.defaultHost, token, source: credential.source }).identify().catch((error: unknown) => {
       throw toAppError(adapter, error)
     })
     const account: StoredAccount = { provider: adapter.definition.id, host: adapter.defaultHost, ...identity, ...credential }
@@ -145,7 +159,7 @@ export class Accounts {
   }
 
   private adapter(providerId: string): ProviderAdapter {
-    const adapter = adapterFor(providerId)
+    const adapter = this.registry.get(providerId)
     if (!adapter) throw new AppError('unsupportedRemote', {})
     return adapter
   }

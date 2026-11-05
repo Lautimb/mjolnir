@@ -272,6 +272,8 @@ export const en: Messages = {
       networkAny: 'Connect to any site',
       workspace: 'See the active repo and session',
       repoFiles: 'Read and write {globs} in your repos',
+      accounts: 'Use your {providers} accounts',
+      cli: 'Run `{command}` to get your token',
     },
   },
   errors: {
@@ -286,6 +288,7 @@ export const en: Messages = {
     noAccount: 'Connect a {provider} account in Settings → Accounts to see its pull requests.',
     providerUnauthorized: 'The {provider} account no longer has access. Reconnect it in Settings → Accounts.',
     providerRequestFailed: 'The provider responded {status}: {message}',
+    pluginProviderFailed: '{provider} failed: {message}',
     secureStorageUnavailable: 'This system has no keychain available to store tokens securely.',
     cliNotFound: '{cli} was not found with a signed-in session.',
     deviceFlowUnavailable: 'This build of Mjolnir has browser sign-in disabled.',

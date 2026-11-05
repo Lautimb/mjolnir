@@ -1,14 +1,19 @@
 import { join } from 'node:path'
 import { app, safeStorage, session } from 'electron'
+import { localize } from '@mjolnir/plugin-sdk'
+import { SOURCE_LOCALE } from '../shared/locales'
 import { Accounts } from './accounts'
 import { detectEnvironment } from './environment'
 import { registerIpc } from './ipc'
+import { PluginBackgrounds } from './plugins/backgrounds'
 import { createBroker } from './plugins/broker'
 import { PluginData } from './plugins/data'
 import { HostFailure } from './plugins/failure'
 import { PluginPorts } from './plugins/ports'
+import { pluginProviderAdapter } from './plugins/provider-adapter'
 import { registerPluginScheme, servePlugins } from './plugins/protocol'
 import { PluginRegistry } from './plugins/registry'
+import { ProviderRegistry } from './providers'
 import { PtyManager } from './pty'
 import { Pulls } from './pulls'
 import { hardenApp, openExternal } from './security'
@@ -18,7 +23,15 @@ import { Workspace } from './workspace'
 
 registerPluginScheme()
 
-function createPlugins(userData: string, workspace: Workspace, onChange: () => void) {
+interface PluginDeps {
+  userData: string
+  workspace: Workspace
+  window: MainWindow
+  accountToken(provider: string, host: string): Promise<string | null>
+  onChange(): void
+}
+
+function createPlugins({ userData, workspace, window, accountToken, onChange }: PluginDeps) {
   const registry = new PluginRegistry({ file: join(userData, 'plugins.json'), appVersion: app.getVersion(), watch: true, onChange })
   const data = new PluginData(join(userData, 'plugin-data'), {
     encrypt: (value) => {
@@ -27,6 +40,21 @@ function createPlugins(userData: string, workspace: Workspace, onChange: () => v
     },
     decrypt: (value) => safeStorage.decryptString(Buffer.from(value, 'base64')),
   })
+  const backgrounds = new PluginBackgrounds({
+    start: (pluginId) => {
+      if (!window.current) return false
+      window.send('plugins:background', pluginId, true)
+      return true
+    },
+    stop: (pluginId) => window.send('plugins:background', pluginId, false),
+  })
+  const providers = new ProviderRegistry(() =>
+    registry.providers().map(({ pluginId, provider, strings }) =>
+      pluginProviderAdapter(pluginId, provider, localize(provider.displayName, strings[SOURCE_LOCALE] ?? {}), (providerId, method, params) =>
+        backgrounds.invoke(pluginId, providerId, method, params),
+      ),
+    ),
+  )
   const broker = createBroker({
     data,
     permissions: (pluginId) => registry.permissions(pluginId),
@@ -35,14 +63,15 @@ function createPlugins(userData: string, workspace: Workspace, onChange: () => v
       workspace.nativeWorktreePath(repoId, worktree).catch(() => {
         throw new HostFailure('invalidRequest', 'unknown session')
       }),
+    accountToken,
     openExternal,
   })
-  const ports = new PluginPorts(broker, (pluginId) => !!registry.permissions(pluginId))
+  const ports = new PluginPorts(broker, backgrounds, (pluginId) => !!registry.permissions(pluginId))
   app.on('before-quit', () => {
     data.flush()
     registry.dispose()
   })
-  return { registry, ports }
+  return { registry, ports, providers }
 }
 
 void app.whenReady().then(async () => {
@@ -51,13 +80,19 @@ void app.whenReady().then(async () => {
   const userData = app.getPath('userData')
   const store = new Store(join(userData, 'workspace.json'))
   const workspace = new Workspace(store)
-  const accounts = new Accounts(join(userData, 'accounts.json'), environment.repoHosts)
   const terminals = new PtyManager((channel, id, payload) => window.send(channel, id, payload))
   const window = new MainWindow(environment.appHost, () => terminals.killAll())
-  const plugins = createPlugins(userData, workspace, () => {
-    plugins.ports.closeInactive()
-    window.send('plugins:changed')
+  const plugins = createPlugins({
+    userData,
+    workspace,
+    window,
+    accountToken: (provider, host) => accounts.token(provider, host),
+    onChange: () => {
+      plugins.ports.closeInactive()
+      window.send('plugins:changed')
+    },
   })
+  const accounts = new Accounts(join(userData, 'accounts.json'), environment.repoHosts, plugins.providers)
   await plugins.registry.init()
   servePlugins((pluginId) => plugins.registry.root(pluginId))
 
@@ -67,7 +102,7 @@ void app.whenReady().then(async () => {
     store,
     workspace,
     accounts,
-    pulls: new Pulls(workspace, accounts),
+    pulls: new Pulls(workspace, accounts, plugins.providers),
     terminals,
     plugins: plugins.registry,
     pluginPorts: plugins.ports,

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isOriginPattern } from './permissions'
+import { isRemoteRule } from './remotes'
 import { isRepoGlob } from './repo-paths'
 import { LOCALIZED } from './strings'
 
@@ -19,6 +20,47 @@ const slug = z
 const version = z.string().regex(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/)
 const text = z.string().trim().min(1).max(200)
 const file = z.string().max(256).refine(isSafeRelativePath, 'must be a relative path inside the plugin')
+
+const hostname = z
+  .string()
+  .max(253)
+  .regex(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/)
+const template = z.string().min(1).max(200)
+
+const remoteRule = z
+  .object({
+    host: template,
+    path: template,
+    repo: z.object({ host: template.optional(), owner: template, name: template }).strict(),
+  })
+  .strict()
+  .refine(isRemoteRule, 'host and path must capture every {variable} the repo uses, as lowercase names')
+
+const provider = z
+  .object({
+    id: slug,
+    displayName: text,
+    defaultHost: hostname,
+    remotes: z.array(remoteRule).min(1).max(20),
+    auth: z
+      .object({
+        token: z.boolean().default(true),
+        cli: z
+          .object({
+            command: z.string().regex(/^[A-Za-z0-9._-]{1,64}$/),
+            args: z.array(z.string().max(200)).max(20),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .default({ token: true }),
+    pulls: z
+      .object({ refspec: z.string().regex(/^refs\/[A-Za-z0-9/_.-]*\{number\}[A-Za-z0-9/_.-]*$/, 'must be a ref with {number}') })
+      .strict()
+      .optional(),
+  })
+  .strict()
 
 const view = z
   .object({
@@ -43,17 +85,20 @@ export const manifestSchema = z
     name: text,
     description: z.string().trim().max(500).optional(),
     locales: z.record(z.string().regex(/^[a-z]{2}$/), file).optional(),
+    background: file.optional(),
     contributes: z
       .object({
         views: z.array(view).max(20).default([]),
+        providers: z.array(provider).max(5).default([]),
       })
       .strict()
-      .default({ views: [] }),
+      .default({ views: [], providers: [] }),
     permissions: z
       .object({
         network: z.array(z.string().refine(isOriginPattern, 'must be an origin like https://host or https://*.host, or *')).max(50).optional(),
         workspace: z.literal('read').optional(),
         repoFiles: z.array(z.string().refine(isRepoGlob, 'must be a glob relative to the repo, outside .git')).min(1).max(20).optional(),
+        accounts: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       })
       .strict()
       .default({}),
@@ -62,6 +107,9 @@ export const manifestSchema = z
   .superRefine((manifest, context) => {
     const ids = manifest.contributes.views.map((entry) => entry.id)
     if (new Set(ids).size !== ids.length) context.addIssue({ code: 'custom', path: ['contributes', 'views'], message: 'view ids must be unique' })
+    const providers = manifest.contributes.providers.map((entry) => entry.id)
+    if (new Set(providers).size !== providers.length) context.addIssue({ code: 'custom', path: ['contributes', 'providers'], message: 'provider ids must be unique' })
+    if (providers.length && !manifest.background) context.addIssue({ code: 'custom', path: ['background'], message: 'providers need a background entry' })
   })
 
 export type PluginManifest = z.infer<typeof manifestSchema>
@@ -69,6 +117,10 @@ export type PluginManifest = z.infer<typeof manifestSchema>
 export type PluginPermissions = PluginManifest['permissions']
 
 export type ViewContribution = PluginManifest['contributes']['views'][number]
+
+export type ProviderContribution = PluginManifest['contributes']['providers'][number]
+
+export { cliCommandLine, pluginProviderId, requestedPermissions } from './contributions'
 
 export type ManifestResult = { ok: true; manifest: PluginManifest } | { ok: false; issue: string }
 
@@ -106,6 +158,11 @@ export function checkCompatibility(manifest: PluginManifest, host: { appVersion:
 }
 
 export function localizedKeys(manifest: PluginManifest): string[] {
-  const texts = [manifest.name, manifest.description ?? '', ...manifest.contributes.views.map((entry) => entry.title)]
+  const texts = [
+    manifest.name,
+    manifest.description ?? '',
+    ...manifest.contributes.views.map((entry) => entry.title),
+    ...manifest.contributes.providers.map((entry) => entry.displayName),
+  ]
   return [...new Set(texts.flatMap((value) => LOCALIZED.exec(value)?.[1] ?? []))]
 }

@@ -1,6 +1,6 @@
-import { PLUGIN_PORT_MESSAGE, type PluginPortMessage } from '../../../shared/plugins'
+import { PLUGIN_PORT_MESSAGE, type PluginPortMessage, type PluginPortRole } from '../../../shared/plugins'
 
-export function requestPort(pluginId: string): Promise<MessagePort> {
+export function requestPort(pluginId: string, role: PluginPortRole): Promise<MessagePort> {
   const nonce = crypto.randomUUID()
   return new Promise((resolve, reject) => {
     const onMessage = (event: MessageEvent<PluginPortMessage>) => {
@@ -11,6 +11,6 @@ export function requestPort(pluginId: string): Promise<MessagePort> {
       else reject(new Error(`plugin ${pluginId} is not active`))
     }
     window.addEventListener('message', onMessage)
-    window.mjolnir.plugins.connect(pluginId, nonce)
+    window.mjolnir.plugins.connect(pluginId, nonce, role)
   })
 }

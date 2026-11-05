@@ -1,18 +1,14 @@
-import { createGitHubClient, github, GITHUB_HOST, type ProviderDefinition, type PullRequestProvider } from '@mjolnir/core'
+import { createGitHubClient, github, GITHUB_HOST, type ParsedRemote, type ProviderDefinition, type PullRequestProvider, type RemoteRepo } from '@mjolnir/core'
+import type { ProviderCredential, ProviderIdentity } from '@mjolnir/plugin-sdk'
 import type { AuthMethod } from '../shared/api'
-
-export interface Identity {
-  login: string
-  name: string | null
-  avatarUrl: string | null
-}
 
 export interface ProviderAdapter {
   definition: ProviderDefinition
   defaultHost: string
   cli: { command: string; tokenArgs(host: string): string[] } | null
   deviceFlowClientId: string | null
-  connect(token: string): { pulls: PullRequestProvider; identify(): Promise<Identity> }
+  token: boolean
+  connect(credential: ProviderCredential): { pulls: PullRequestProvider | null; identify(): Promise<ProviderIdentity> }
 }
 
 const GITHUB_OAUTH_CLIENT_ID = ''
@@ -22,7 +18,8 @@ const githubAdapter: ProviderAdapter = {
   defaultHost: GITHUB_HOST,
   cli: { command: 'gh', tokenArgs: (host) => ['auth', 'token', '--hostname', host] },
   deviceFlowClientId: GITHUB_OAUTH_CLIENT_ID || null,
-  connect(token) {
+  token: true,
+  connect({ token }) {
     const client = createGitHubClient({ token })
     return {
       pulls: client,
@@ -34,16 +31,32 @@ const githubAdapter: ProviderAdapter = {
   },
 }
 
-export const PROVIDERS: ProviderAdapter[] = [githubAdapter]
+export const BUILT_IN_PROVIDERS: readonly ProviderAdapter[] = [githubAdapter]
 
-export function adapterFor(providerId: string): ProviderAdapter | undefined {
-  return PROVIDERS.find((adapter) => adapter.definition.id === providerId)
+export class ProviderRegistry {
+  constructor(private readonly plugins: () => readonly ProviderAdapter[] = () => []) {}
+
+  all(): ProviderAdapter[] {
+    return [...BUILT_IN_PROVIDERS, ...this.plugins()]
+  }
+
+  get(providerId: string): ProviderAdapter | undefined {
+    return this.all().find((adapter) => adapter.definition.id === providerId)
+  }
+
+  match(remote: ParsedRemote): RemoteRepo | null {
+    for (const adapter of this.all()) {
+      const match = adapter.definition.matchRemote(remote)
+      if (match) return match
+    }
+    return null
+  }
 }
 
 export function authMethods(adapter: ProviderAdapter): AuthMethod[] {
   return [
     ...(adapter.cli ? (['cli'] as const) : []),
     ...(adapter.deviceFlowClientId ? (['device'] as const) : []),
-    'token',
+    ...(adapter.token ? (['token'] as const) : []),
   ]
 }

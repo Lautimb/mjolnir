@@ -1,7 +1,7 @@
 import { dialog } from 'electron'
 import type { Services } from '.'
 import { handle, listen } from './handle'
-import { grantedPermissions, id, label } from '../schemas'
+import { grantedPermissions, id, label, portRole } from '../schemas'
 
 export function registerPluginsIpc({ window, plugins, pluginPorts }: Services): void {
   handle('plugins:list', [], () => plugins.list())
@@ -15,8 +15,8 @@ export function registerPluginsIpc({ window, plugins, pluginPorts }: Services): 
   handle('plugins:enable', [id, grantedPermissions], (pluginId, approved) => plugins.enable(pluginId, approved))
   handle('plugins:disable', [id], (pluginId) => plugins.disable(pluginId))
   handle('plugins:remove', [id], (pluginId) => plugins.remove(pluginId))
-  listen('plugins:connect', [id, id], (pluginId, nonce) => {
-    const port = pluginPorts.connect(pluginId)
+  listen('plugins:connect', [id, id, portRole], (pluginId, nonce, role) => {
+    const port = pluginPorts.connect(pluginId, role)
     window.current?.webContents.postMessage('plugins:port', { nonce, ok: !!port }, port ? [port] : [])
   })
 }

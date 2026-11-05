@@ -18,6 +18,7 @@ import type {
 } from '@mjolnir/core/browser'
 import type { GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { PluginManifest } from '@mjolnir/plugin-sdk/manifest'
+import type { PluginPortRole } from './plugins'
 import type { Settings } from './settings'
 
 export interface SpawnRequest {
@@ -142,8 +143,9 @@ export interface MjolnirApi {
     enable(id: string, approved: GrantablePermissions): Promise<void>
     disable(id: string): Promise<void>
     remove(id: string): Promise<void>
-    connect(id: string, nonce: string): void
+    connect(id: string, nonce: string, role: PluginPortRole): void
     onChange(listener: () => void): () => void
+    onBackground(listener: (pluginId: string, running: boolean) => void): () => void
   }
   pty: {
     spawn(request: SpawnRequest): Promise<void>

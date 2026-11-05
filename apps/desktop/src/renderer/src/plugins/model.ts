@@ -46,6 +46,8 @@ export function describePermissions(t: T, permissions: GrantablePermissions): st
     ...(network.length ? [network.includes('*') ? t('plugins.permissions.networkAny') : t('plugins.permissions.network', { origins: network.join(', ') })] : []),
     ...(permissions.workspace ? [t('plugins.permissions.workspace')] : []),
     ...(repoFiles.length ? [t('plugins.permissions.repoFiles', { globs: repoFiles.join(', ') })] : []),
+    ...(permissions.accounts?.length ? [t('plugins.permissions.accounts', { providers: permissions.accounts.join(', ') })] : []),
+    ...(permissions.cli ?? []).map((command) => t('plugins.permissions.cli', { command })),
   ]
 }
 

@@ -1,3 +1,5 @@
+import type { ProviderMethod } from './providers'
+
 export const API_VERSION = 1
 
 export const PLUGIN_SCHEME = 'mjolnir-plugin'
@@ -57,12 +59,21 @@ export interface HostMethods {
   'repoFiles.read': { params: [session: SessionRef, path: string]; result: string | null }
   'repoFiles.write': { params: [session: SessionRef, path: string, content: string]; result: void }
   'repoFiles.delete': { params: [session: SessionRef, path: string]; result: void }
+  'accounts.token': { params: [provider: string, host: string]; result: string | null }
   'ui.openExternal': { params: [url: string]; result: void }
 }
 
 export type HostMethod = keyof HostMethods
 
-export type HostErrorCode = 'invalidRequest' | 'unknownMethod' | 'permissionDenied' | 'quotaExceeded' | 'timeout' | 'requestFailed' | 'unavailable'
+export type HostErrorCode =
+  | 'invalidRequest'
+  | 'unknownMethod'
+  | 'permissionDenied'
+  | 'quotaExceeded'
+  | 'timeout'
+  | 'requestFailed'
+  | 'unavailable'
+  | 'unauthorized'
 
 export interface HostErrorPayload {
   code: HostErrorCode
@@ -76,6 +87,15 @@ export interface CallMessage {
 }
 
 export type ReplyMessage = { id: number; result: unknown } | { id: number; error: HostErrorPayload }
+
+export interface InvokeMessage {
+  invoke: number
+  provider: string
+  method: ProviderMethod
+  params: unknown[]
+}
+
+export type InvokeReply = { invoke: number; result: unknown } | { invoke: number; error: HostErrorPayload }
 
 export interface PluginContext {
   locale: string

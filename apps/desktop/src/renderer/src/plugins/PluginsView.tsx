@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FolderOpen, Puzzle, Trash2 } from 'lucide-react'
-import { hasPermissions } from '@mjolnir/plugin-sdk'
+import { hasPermissions, requestedPermissions } from '@mjolnir/plugin-sdk'
 import type { PluginInfo } from '../../../shared/api'
 import { describeError, useI18n, type T } from '../i18n/I18nProvider'
 import { Badge, type Tone } from '../ui/Badge'
@@ -28,7 +28,7 @@ function PluginRow({ plugin, onError }: { plugin: PluginInfo; onError(error: unk
   const { plugins } = window.mjolnir
   const name = pluginName(plugin, locale)
   const description = plugin.manifest?.description ? pluginText(plugin, plugin.manifest.description, locale) : null
-  const requested = describePermissions(t, plugin.manifest?.permissions ?? {})
+  const requested = describePermissions(t, plugin.manifest ? requestedPermissions(plugin.manifest) : {})
   const badge = status(t, plugin)
   const usable = plugin.status.kind === 'ready'
 

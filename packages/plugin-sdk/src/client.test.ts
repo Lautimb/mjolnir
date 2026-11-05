@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createMjolnir, HostError } from './client'
-import type { CallMessage, PluginMessage, ReplyMessage, WorkspaceSession } from './protocol'
+import type { CallMessage, InvokeMessage, InvokeReply, PluginMessage, ReplyMessage, WorkspaceSession } from './protocol'
 
 function setup(reply: (call: CallMessage) => ReplyMessage) {
   const { port1: plugin, port2: host } = new MessageChannel()
@@ -60,6 +60,50 @@ describe('createMjolnir', () => {
     mjolnir.updateContext({ locale: 'es', theme: {}, session: null })
     expect(seen).toEqual(['en'])
     expect(mjolnir.context.locale).toBe('es')
+    close()
+  })
+})
+
+describe('providers', () => {
+  function host() {
+    const { port1: plugin, port2: host } = new MessageChannel()
+    const replies: InvokeReply[] = []
+    host.addEventListener('message', (event: MessageEvent<InvokeReply>) => replies.push(event.data))
+    host.start()
+    const mjolnir = createMjolnir(plugin, { post: () => {} }, { locale: 'es', theme: {}, session: null })
+    const until = async (count: number) => {
+      while (replies.length < count) await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+    return { mjolnir, replies, until, invoke: (message: InvokeMessage) => host.postMessage(message), close: () => (plugin.close(), host.close()) }
+  }
+
+  it('answers host calls with the registered provider, even when it registers after the call arrives', async () => {
+    const { mjolnir, replies, until, invoke, close } = host()
+    invoke({ invoke: 7, provider: 'azure', method: 'pulls.get', params: [{ token: 't' }, 'repo', 3] })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    mjolnir.providers.register('azure', {
+      identify: async () => ({ login: 'ada', name: null, avatarUrl: null }),
+      pulls: { get: async (_credential: unknown, repo: unknown, number: unknown) => ({ repo, number }) } as never,
+    })
+    await until(1)
+    expect(replies).toEqual([{ invoke: 7, result: { repo: 'repo', number: 3 } }])
+    close()
+  })
+
+  it('reports provider errors with their host error code', async () => {
+    const { mjolnir, replies, until, invoke, close } = host()
+    mjolnir.providers.register('azure', {
+      identify: async () => {
+        throw new HostError('unauthorized', 'bad token')
+      },
+    })
+    invoke({ invoke: 1, provider: 'azure', method: 'identify', params: [] })
+    invoke({ invoke: 2, provider: 'azure', method: 'pulls.list', params: [] })
+    await until(2)
+    expect(replies).toEqual([
+      { invoke: 1, error: { code: 'unauthorized', message: 'bad token' } },
+      { invoke: 2, error: { code: 'unknownMethod', message: 'azure: pulls.list' } },
+    ])
     close()
   })
 })
