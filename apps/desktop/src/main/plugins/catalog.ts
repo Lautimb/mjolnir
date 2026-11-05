@@ -9,7 +9,7 @@ import { PACKAGE_LIMITS } from './package'
 
 export const CATALOG_URL = 'https://raw.githubusercontent.com/Lautimb/mjolnir-plugins/main/index.json'
 
-export const CATALOG_KEYS = ['MCowBQYDK2VwAyEAJAFrxD0FMNAtayJMTCmnE1h1xLH6ejJgdHow4bczy0U=']
+export const CATALOG_KEYS = ['MCowBQYDK2VwAyEAdX5mQ6AiGT1wcBL1Ao9UbFQ+FQxvjCtVyeJhKdzNmB4=']
 
 export const CATALOG_LIMITS = { indexBytes: 5_000_000, plugins: 1_000, maxAgeMs: 60 * 60_000 }
 
