@@ -33,3 +33,35 @@ jobs:
       - run: pnpm --filter @mjolnir/desktop exec electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  plugins:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    env:
+      PLUGINS: http-client azure-devops
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Package and sign plugins
+        env:
+          MJOLNIR_SIGNING_KEY: ${{ secrets.MJOLNIR_SIGNING_KEY }}
+          DOWNLOADS: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+        run: |
+          mkdir -p catalog
+          for plugin in $PLUGINS; do
+            pnpm --filter "./plugins/$plugin" run package
+            file=$(ls plugins/$plugin/*.mjp)
+            cp "$file" catalog/
+            node packages/plugin-sdk/pack/cli.mjs entry "plugins/$plugin/dist" "$file" --url "$DOWNLOADS/$(basename "$file")" > "catalog/$plugin.entry.json"
+          done
+          node -e "const fs=require('fs');const entries=fs.readdirSync('catalog').filter(f=>f.endsWith('.entry.json')).map(f=>JSON.parse(fs.readFileSync('catalog/'+f)));fs.writeFileSync('catalog/catalog-entries.json',JSON.stringify(entries,null,2))"
+          rm catalog/*.entry.json
+      - run: gh release upload "${{ github.ref_name }}" catalog/* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

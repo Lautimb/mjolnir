@@ -1,18 +1,19 @@
 import { join } from 'node:path'
-import { app, safeStorage, session } from 'electron'
+import { app, net, safeStorage, session } from 'electron'
 import { localize } from '@mjolnir/plugin-sdk'
 import { SOURCE_LOCALE } from '../shared/locales'
 import { Accounts } from './accounts'
 import { detectEnvironment } from './environment'
 import { registerIpc } from './ipc'
 import { PluginBackgrounds } from './plugins/backgrounds'
+import { PluginCatalog } from './plugins/catalog'
 import { createBroker } from './plugins/broker'
 import { PluginData } from './plugins/data'
 import { HostFailure } from './plugins/failure'
 import { PluginPorts } from './plugins/ports'
 import { pluginProviderAdapter } from './plugins/provider-adapter'
 import { registerPluginScheme, servePlugins } from './plugins/protocol'
-import { PluginRegistry } from './plugins/registry'
+import { PluginRegistry, SUPPORTED_API } from './plugins/registry'
 import { ProviderRegistry } from './providers'
 import { PtyManager } from './pty'
 import { Pulls } from './pulls'
@@ -77,7 +78,13 @@ function createPlugins({ userData, workspace, window, accountToken, onChange }: 
     data.flush()
     registry.dispose()
   })
-  return { registry, ports, providers }
+  const catalog = new PluginCatalog({
+    cacheFile: join(userData, 'plugin-catalog.json'),
+    appVersion: app.getVersion(),
+    apiVersions: SUPPORTED_API,
+    fetch: (url, init) => net.fetch(url, init),
+  })
+  return { registry, catalog, ports, providers }
 }
 
 void app.whenReady().then(async () => {
@@ -111,6 +118,7 @@ void app.whenReady().then(async () => {
     pulls: new Pulls(workspace, accounts, plugins.providers),
     terminals,
     plugins: plugins.registry,
+    pluginCatalog: plugins.catalog,
     pluginPorts: plugins.ports,
   })
   window.open()

@@ -1,5 +1,6 @@
 import type { Accounts } from '../accounts'
 import type { Environment } from '../environment'
+import type { PluginCatalog } from '../plugins/catalog'
 import type { PluginPorts } from '../plugins/ports'
 import type { PluginRegistry } from '../plugins/registry'
 import type { PtyManager } from '../pty'
@@ -23,6 +24,7 @@ export interface Services {
   pulls: Pulls
   terminals: PtyManager
   plugins: PluginRegistry
+  pluginCatalog: PluginCatalog
   pluginPorts: PluginPorts
 }
 

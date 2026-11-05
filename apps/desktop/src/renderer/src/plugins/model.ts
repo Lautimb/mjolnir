@@ -1,6 +1,6 @@
-import { localize, PLUGIN_SCHEME, type GrantablePermissions } from '@mjolnir/plugin-sdk'
-import type { ViewContribution } from '@mjolnir/plugin-sdk/manifest'
-import type { PluginInfo } from '../../../shared/api'
+import { compareVersions, localize, PLUGIN_SCHEME, type GrantablePermissions } from '@mjolnir/plugin-sdk'
+import type { PluginManifest, ViewContribution } from '@mjolnir/plugin-sdk/manifest'
+import type { CatalogPlugin, PluginInfo } from '../../../shared/api'
 import { FALLBACK_LOCALE, SOURCE_LOCALE } from '../../../shared/locales'
 import type { T } from '../i18n/I18nProvider'
 
@@ -30,12 +30,18 @@ export function pluginViews(plugins: PluginInfo[]): PluginView[] {
   )
 }
 
-export function pluginText(plugin: PluginInfo, value: string, locale: string): string {
+interface Localizable {
+  id: string
+  manifest: PluginManifest | null
+  strings: Record<string, Record<string, string>>
+}
+
+export function pluginText(plugin: Localizable, value: string, locale: string): string {
   const { strings } = plugin
   return localize(value, { ...strings[SOURCE_LOCALE], ...strings[FALLBACK_LOCALE], ...strings[locale] })
 }
 
-export function pluginName(plugin: PluginInfo, locale: string): string {
+export function pluginName(plugin: Localizable, locale: string): string {
   return plugin.manifest ? pluginText(plugin, plugin.manifest.name, locale) : plugin.id
 }
 
@@ -53,4 +59,10 @@ export function describePermissions(t: T, permissions: GrantablePermissions): st
 
 export function touch(keys: PluginViewKey[], key: PluginViewKey, limit = MOUNTED_VIEWS): PluginViewKey[] {
   return [key, ...keys.filter((existing) => existing !== key)].slice(0, limit)
+}
+
+export function catalogUpdate(plugin: PluginInfo, available: CatalogPlugin | undefined): CatalogPlugin | null {
+  if (!available || plugin.source.kind !== 'package' || available.status.kind !== 'ready') return null
+  const newest = plugin.update && compareVersions(plugin.update.version, plugin.source.version) > 0 ? plugin.update.version : plugin.source.version
+  return compareVersions(available.version, newest) > 0 ? available : null
 }

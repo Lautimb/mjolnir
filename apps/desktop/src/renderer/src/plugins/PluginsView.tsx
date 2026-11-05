@@ -1,14 +1,15 @@
-import { useState } from 'react'
-import { FolderOpen, Package, Pin, PinOff, Puzzle, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Download, FolderOpen, Package, Pin, PinOff, Puzzle, RefreshCw, Store, Trash2 } from 'lucide-react'
 import { hasPermissions, requestedPermissions } from '@mjolnir/plugin-sdk'
-import type { PluginInfo } from '../../../shared/api'
+import type { CatalogPlugin, PluginCatalogState, PluginInfo, PluginSource } from '../../../shared/api'
 import { describeError, useI18n, type T } from '../i18n/I18nProvider'
 import { Badge, type Tone } from '../ui/Badge'
 import { Button, IconButton } from '../ui/Button'
 import { Description } from '../ui/Description'
 import { EmptyState } from '../ui/EmptyState'
 import { FormError } from '../ui/fields'
-import { describePermissions, pluginName, pluginText, pluginViews, type PluginViewKey } from './model'
+import { Segmented } from '../ui/Segmented'
+import { catalogUpdate, describePermissions, pluginName, pluginText, pluginViews, type PluginViewKey } from './model'
 
 function status(t: T, plugin: PluginInfo): { tone: Tone; label: string } {
   const { status } = plugin
@@ -26,15 +27,43 @@ function status(t: T, plugin: PluginInfo): { tone: Tone; label: string } {
 const confirmPermissions = (lines: string[], message: (permissions: string) => string) =>
   !lines.length || confirm(message(lines.map((line) => `• ${line}`).join('\n')))
 
+function enablePlugin(t: T, plugin: PluginInfo, name: string): Promise<void> {
+  const pending = describePermissions(t, plugin.pending)
+  if (!confirmPermissions(pending, (permissions) => t('plugins.confirmPermissions', { name, permissions }))) return Promise.resolve()
+  return window.mjolnir.plugins.enable(plugin.id, plugin.pending)
+}
+
+function SourceBadge({ source }: { source: PluginSource }) {
+  const { t } = useI18n()
+  if (source.kind !== 'package') return null
+  return source.verified ? <Badge tone="success">{t('plugins.verified')}</Badge> : <Badge tone="muted">{t('plugins.unverified')}</Badge>
+}
+
+function useCatalog() {
+  const [state, setState] = useState<PluginCatalogState | null>(null)
+  const [loading, setLoading] = useState(false)
+  const load = useCallback((refresh: boolean) => {
+    setLoading(true)
+    window.mjolnir.plugins
+      .catalog(refresh)
+      .then(setState)
+      .catch(() => setState((current) => (current ? { ...current, failed: true } : { plugins: [], fetchedAt: null, failed: true })))
+      .finally(() => setLoading(false))
+  }, [])
+  useEffect(() => load(false), [load])
+  return { state, loading, refresh: () => load(true) }
+}
+
 interface RowProps {
   plugin: PluginInfo
+  available: CatalogPlugin | undefined
   hiddenViews: string[]
   onToggleView(key: PluginViewKey, visible: boolean): void
   onOpenView(key: PluginViewKey): void
   onError(error: unknown): void
 }
 
-function PluginRow({ plugin, hiddenViews, onToggleView, onOpenView, onError }: RowProps) {
+function PluginRow({ plugin, available, hiddenViews, onToggleView, onOpenView, onError }: RowProps) {
   const { t, locale } = useI18n()
   const { plugins } = window.mjolnir
   const name = pluginName(plugin, locale)
@@ -44,10 +73,17 @@ function PluginRow({ plugin, hiddenViews, onToggleView, onOpenView, onError }: R
   const usable = plugin.status.kind === 'ready'
   const { source, update } = plugin
   const views = pluginViews([plugin])
+  const newer = catalogUpdate(plugin, available)
+  const [updating, setUpdating] = useState(false)
 
-  const enable = () => {
-    const pending = describePermissions(t, plugin.pending)
-    if (confirmPermissions(pending, (permissions) => t('plugins.confirmPermissions', { name, permissions }))) plugins.enable(plugin.id, plugin.pending).catch(onError)
+  const enable = () => void enablePlugin(t, plugin, name).catch(onError)
+
+  const updateFromCatalog = () => {
+    setUpdating(true)
+    plugins
+      .installFromCatalog(plugin.id)
+      .catch(onError)
+      .finally(() => setUpdating(false))
   }
 
   const applyUpdate = () => {
@@ -71,7 +107,7 @@ function PluginRow({ plugin, hiddenViews, onToggleView, onOpenView, onError }: R
             <span className="font-medium">{name}</span>
             {plugin.manifest && <span className="text-sm text-subtle">{plugin.manifest.version}</span>}
             <Badge tone={badge.tone}>{badge.label}</Badge>
-            {source.kind === 'package' && <Badge tone="muted">{t('plugins.unverified')}</Badge>}
+            <SourceBadge source={source} />
           </div>
           {description && <Description>{description}</Description>}
           <div className="mt-1 text-sm text-subtle">{requested.length ? requested.join(' · ') : t('plugins.permissions.none')}</div>
@@ -81,11 +117,17 @@ function PluginRow({ plugin, hiddenViews, onToggleView, onOpenView, onError }: R
             </div>
           ) : (
             <div className="text-xs text-subtle" title={`sha256 ${source.sha256}`}>
-              {t('plugins.installedFromFile')}
+              {source.origin === 'catalog' ? t('plugins.installedFromCatalog') : t('plugins.installedFromFile')}
             </div>
           )}
         </div>
         <div className="flex flex-none items-center gap-1">
+          {newer && (
+            <Button variant="primary" disabled={updating} onClick={updateFromCatalog}>
+              <Download size={14} />
+              {updating ? t('plugins.catalog.installing') : t('plugins.catalog.updateTo', { version: newer.version })}
+            </Button>
+          )}
           {plugin.active || (plugin.enabled && !usable) ? (
             <Button onClick={() => plugins.disable(plugin.id).catch(onError)}>{t('plugins.disable')}</Button>
           ) : (
@@ -136,6 +178,58 @@ function PluginRow({ plugin, hiddenViews, onToggleView, onOpenView, onError }: R
   )
 }
 
+interface CatalogRowProps {
+  entry: CatalogPlugin
+  onInstalled(plugin: PluginInfo): void
+  onError(error: unknown): void
+}
+
+function CatalogRow({ entry, onInstalled, onError }: CatalogRowProps) {
+  const { t, locale } = useI18n()
+  const [installing, setInstalling] = useState(false)
+  const name = pluginName(entry, locale)
+  const description = entry.manifest.description ? pluginText(entry, entry.manifest.description, locale) : null
+  const requested = describePermissions(t, requestedPermissions(entry.manifest))
+  const { status } = entry
+
+  const install = () => {
+    setInstalling(true)
+    window.mjolnir.plugins
+      .installFromCatalog(entry.id)
+      .then(async (plugin) => {
+        onInstalled(plugin)
+        await enablePlugin(t, plugin, name)
+      })
+      .catch(onError)
+      .finally(() => setInstalling(false))
+  }
+
+  return (
+    <li className="flex items-start gap-4 border-b border-line py-3">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{name}</span>
+          <span className="text-sm text-subtle">{entry.version}</span>
+          {entry.verified ? <Badge tone="success">{t('plugins.verified')}</Badge> : <Badge tone="muted">{t('plugins.unverified')}</Badge>}
+          {status.kind === 'incompatible' && (
+            <Badge tone="danger">
+              {status.reason === 'app' ? t('plugins.status.incompatibleApp', { required: status.required }) : t('plugins.status.incompatibleApi', { required: status.required })}
+            </Badge>
+          )}
+        </div>
+        {description && <Description>{description}</Description>}
+        <div className="mt-1 text-sm text-subtle">{requested.length ? requested.join(' · ') : t('plugins.permissions.none')}</div>
+      </div>
+      <Button variant="primary" disabled={installing || status.kind !== 'ready'} onClick={install}>
+        <Download size={14} />
+        {installing ? t('plugins.catalog.installing') : t('plugins.catalog.install')}
+      </Button>
+    </li>
+  )
+}
+
+type Tab = 'installed' | 'available'
+
 interface Props {
   plugins: PluginInfo[]
   hiddenViews: string[]
@@ -146,6 +240,10 @@ interface Props {
 export function PluginsView({ plugins, hiddenViews, onHiddenViewsChange, onOpenView }: Props) {
   const { t } = useI18n()
   const [error, setError] = useState<unknown>(null)
+  const catalog = useCatalog()
+  const installedIds = new Set(plugins.map((plugin) => plugin.id))
+  const available = catalog.state?.plugins.filter((entry) => !installedIds.has(entry.id)) ?? []
+  const [tab, setTab] = useState<Tab>(plugins.length ? 'installed' : 'available')
 
   const run = (action: () => Promise<unknown>) => {
     setError(null)
@@ -174,15 +272,48 @@ export function PluginsView({ plugins, hiddenViews, onHiddenViewsChange, onOpenV
         <div className="mb-6">
           <Description>{t('plugins.description')}</Description>
         </div>
+        <div className="mb-2 flex items-center gap-2">
+          <Segmented
+            label={t('plugins.title')}
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'installed', label: t('plugins.tabs.installed', { count: plugins.length }) },
+              { value: 'available', label: t('plugins.tabs.available', { count: available.length }) },
+            ]}
+          />
+          <span className="min-w-0 flex-1 truncate text-sm text-subtle">{catalog.state?.failed ? t('plugins.catalog.failed') : null}</span>
+          <IconButton aria-label={t('common.refresh')} title={t('common.refresh')} disabled={catalog.loading} onClick={catalog.refresh}>
+            <RefreshCw size={14} className={catalog.loading ? 'animate-spin' : undefined} />
+          </IconButton>
+        </div>
         {!!error && <FormError>{describeError(t, error)}</FormError>}
-        {plugins.length ? (
+        {tab === 'installed' ? (
+          plugins.length ? (
+            <ul>
+              {plugins.map((plugin) => (
+                <PluginRow
+                  key={plugin.id}
+                  plugin={plugin}
+                  available={catalog.state?.plugins.find((entry) => entry.id === plugin.id)}
+                  hiddenViews={hiddenViews}
+                  onToggleView={toggleView}
+                  onOpenView={onOpenView}
+                  onError={setError}
+                />
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={<Puzzle size={28} />}>{t('plugins.empty')}</EmptyState>
+          )
+        ) : available.length ? (
           <ul>
-            {plugins.map((plugin) => (
-              <PluginRow key={plugin.id} plugin={plugin} hiddenViews={hiddenViews} onToggleView={toggleView} onOpenView={onOpenView} onError={setError} />
+            {available.map((entry) => (
+              <CatalogRow key={entry.id} entry={entry} onInstalled={() => setTab('installed')} onError={setError} />
             ))}
           </ul>
         ) : (
-          <EmptyState icon={<Puzzle size={28} />}>{t('plugins.empty')}</EmptyState>
+          <EmptyState icon={<Store size={28} />}>{catalog.loading && !catalog.state ? t('plugins.catalog.loading') : t('plugins.catalog.empty')}</EmptyState>
         )}
       </div>
     </div>

@@ -2,9 +2,9 @@ import { dialog } from 'electron'
 import { PACKAGE_EXTENSION } from '@mjolnir/plugin-sdk/manifest'
 import type { Services } from '.'
 import { handle, listen } from './handle'
-import { grantedPermissions, id, label, portRole } from '../schemas'
+import { flag, grantedPermissions, id, label, portRole } from '../schemas'
 
-export function registerPluginsIpc({ window, plugins, pluginPorts }: Services): void {
+export function registerPluginsIpc({ window, plugins, pluginCatalog, pluginPorts }: Services): void {
   handle('plugins:list', [], () => plugins.list())
   handle('plugins:addFolder', [label], async (title) => {
     const parent = window.current
@@ -19,6 +19,15 @@ export function registerPluginsIpc({ window, plugins, pluginPorts }: Services): 
     const result = await dialog.showOpenDialog(parent, { title, properties: ['openFile'], filters: [{ name: filterName, extensions: [PACKAGE_EXTENSION] }] })
     const [file] = result.filePaths
     return result.canceled || !file ? null : plugins.installPackage(file)
+  })
+  handle('plugins:catalog', [flag], (refresh) => pluginCatalog.state(refresh))
+  handle('plugins:installFromCatalog', [id], async (pluginId) => {
+    const { zip, entry } = await pluginCatalog.download(pluginId)
+    return plugins.installArchive(zip, `${entry.id}-${entry.version}.${PACKAGE_EXTENSION}`, {
+      origin: 'catalog',
+      verified: entry.verified,
+      expect: { id: entry.id, version: entry.version },
+    })
   })
   handle('plugins:applyUpdate', [id, grantedPermissions], (pluginId, approved) => plugins.applyUpdate(pluginId, approved))
   handle('plugins:discardUpdate', [id], (pluginId) => plugins.discardUpdate(pluginId))

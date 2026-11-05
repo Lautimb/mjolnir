@@ -2,8 +2,6 @@
 
 Propuesta para el paso 1 del [roadmap](roadmap.md). Objetivo: instalar funcionalidades a demanda (Azure DevOps, cliente HTTP, GitLab) sin publicar una versión nueva de Mjolnir, sin abrir una puerta trasera a lo que hoy protege el IPC.
 
-Lo único que sigue marcado **A decidir** es dónde se publica el catálogo.
-
 ## Principios
 
 1. **La frontera es la misma que hoy.** Un plugin no habla con el proceso main por su cuenta: todo pasa por un broker en main que valida argumentos con zod y verifica permisos, igual que `handle()`.
@@ -167,12 +165,15 @@ Siempre otorgados, sin preguntar: su propio storage, sus secretos, los tokens de
 <userData>/plugin-data/<id>/         storage.json y secrets.json del plugin
 ```
 
-- **v1 — archivo local**: "Instalar desde archivo…" con un `.mjp` (un zip con `mjolnir-plugin.json` en la raíz). Main lo lee con su propio lector de zip, sin dependencias: rechaza paths inseguros, symlinks, entradas cifradas, ZIP64 y duplicados, verifica el CRC de cada archivo y no infla más que el tamaño declarado (50 MB el paquete, 20 MB por archivo, 100 MB en total, 2000 archivos), así un zip bomb no agota memoria. Después valida el manifest y la compatibilidad, y recién ahí extrae a una carpeta temporal que renombra al final. Se marca como "Sin verificar" hasta que haya firma (fase 5).
+- **v1 — archivo local**: "Instalar desde archivo…" con un `.mjp` (un zip con `mjolnir-plugin.json` en la raíz). Main lo lee con su propio lector de zip, sin dependencias: rechaza paths inseguros, symlinks, entradas cifradas, ZIP64 y duplicados, verifica el CRC de cada archivo y no infla más que el tamaño declarado (50 MB el paquete, 20 MB por archivo, 100 MB en total, 2000 archivos), así un zip bomb no agota memoria. Después valida el manifest y la compatibilidad, y recién ahí extrae a una carpeta temporal que renombra al final. Se marca como "Sin verificar".
 - **Actualizar**: instalar otro `.mjp` del mismo id. Si la versión nueva no pide permisos nuevos (o el plugin está deshabilitado) se activa en el momento y las vistas abiertas se recargan; si pide más, queda como actualización pendiente con "Actualizar" (pide aprobar lo nuevo) o "Descartar", y mientras tanto sigue corriendo la versión actual. Las carpetas de versiones que ya no se usan se borran.
 - **Desinstalar**: borra los archivos del paquete; lo que el plugin guardó en `plugin-data` se conserva por si se reinstala. Un id cargado desde una carpeta no se puede pisar con un paquete (`pluginExists`).
 - **Empaquetar**: `mjolnir-plugin pack [dist] [--out archivo.mjp]`, el bin de `@mjolnir/plugin-sdk`. Los first-party lo usan con `pnpm --filter @mjolnir/plugin-hello run package`, que deja `plugins/hello/hello-<versión>.mjp`.
 - **v1 — modo desarrollo**: "Cargar carpeta…" apunta a una carpeta con el plugin sin empaquetar y recarga los iframes cuando cambian los archivos. Es como se desarrollan los plugins first-party.
-- **Después — catálogo**: un `index.json` (id, versión, URL del `.mjp`, sha256, firma) en un repo público. Firma ed25519; la clave pública de Mjolnir viene en la app y los plugins first-party van firmados. Los updates se ofrecen desde ahí.
+- **Catálogo**: la pestaña "Disponibles" lee `index.json` de [Lautimb/mjolnir-plugins](https://github.com/Lautimb/mjolnir-plugins) (`CATALOG_URL` en `main/plugins/catalog.ts`). Cada entrada trae id, versión, sha256, tamaño, URL del `.mjp`, el manifest y los strings que usa, así se muestran nombre, permisos y compatibilidad sin descargar nada. Main lo cachea en `plugin-catalog.json`, lo revalida con ETag a la hora y, si falla la red, muestra la última copia. Una entrada rota se descarta sola, sin tirar el catálogo entero.
+- **Instalar desde el catálogo**: main descarga la URL, que tiene que ser un `.mjp` en las releases de un repo de GitHub, corta al pasar el tamaño declarado, verifica el sha256 y que el manifest sea el mismo id y versión de la entrada, y sigue por el mismo camino que un archivo. Al terminar pide los permisos. Si el catálogo tiene una versión más nueva de un paquete instalado aparece "Actualizar a X", que usa el mismo flujo de actualizaciones con permisos nuevos.
+- **Firma**: ed25519 sobre `id`, `versión` y `sha256` (el formato está en `@mjolnir/plugin-sdk/catalog`). Al incluir la versión, un paquete firmado viejo no pasa por uno nuevo. Las claves públicas en las que confía la app están en `CATALOG_KEYS` (es una lista, para poder rotar). Una entrada con firma válida se ve como "Verificado"; sin firma o con firma inválida, como "Sin verificar". La firma es por entrada y la integridad del paquete la da el sha256, así que el índice no necesita firma propia.
+- **Publicación first-party**: el workflow de release empaqueta los plugins de `PLUGINS`, genera las entradas con `mjolnir-plugin entry` firmadas con el secret `MJOLNIR_SIGNING_KEY` y sube los `.mjp` y `catalog-entries.json` a la release. El workflow `Sync` de `mjolnir-plugins` copia esas entradas de la última release publicada cada 6 horas. Los de terceros entran por PR al índice, sin firma; `Validate` descarga el paquete y verifica tamaño y sha256.
 
 ### Plugins first-party
 
@@ -191,9 +192,9 @@ Decidido: viven en el monorepo (`plugins/http-client`, `plugins/azure-devops`) y
 
 Los entornos (`{{variable}}`), el historial (últimos 50) y el borrador quedan en el storage del plugin, en la máquina y no en el repo, porque suelen tener tokens. Pide `network: ["*"]` y `repoFiles: [".mjolnir/http/**"]`.
 
-### A decidir: dónde se publica
+### Dónde se publica
 
-El repo es privado, así que los releases no se pueden bajar sin acceso. El catálogo necesita un lugar público (repo de releases aparte o el mismo repo en público). Es la misma decisión que está abierta para los instaladores de la app; conviene tomarlas juntas.
+Decidido: los `.mjp` van como assets de las releases de GitHub del repo de cada plugin (los first-party, en las de `Lautimb/mjolnir`, ahora público) y el índice en un repo aparte, `Lautimb/mjolnir-plugins`. El índice tiene su propio historial, un tercero publica con un PR sin acceso al repo de la app y el catálogo cambia sin sacar versión de Mjolnir. Se descartaron npm (tarballs en vez de `.mjp` y una cuenta más) y un servidor propio (infraestructura sin necesidad).
 
 ## UI de los plugins
 
@@ -236,6 +237,6 @@ Cada fase es un PR con CI verde.
 2. **Cliente HTTP** ✅ — `plugins/http-client` (request, respuesta, historial, entornos) más `repoFiles` y `context` para las colecciones por repo. Valida la API de UI y de red. **∥** con la fase 3 una vez mergeada la 1.
 3. **Proveedores** ✅ — registro de proveedores, `PluginProviderAdapter`, auth por CLI declarado, permiso `accounts`. Prueba con `plugins/azure-devops` (cuenta + PRs).
 4. **Instalación** ✅ — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
-5. **Catálogo y firma** — cuando esté decidido dónde se publica.
+5. **Catálogo y firma** ✅ — índice en `mjolnir-plugins`, pestaña "Disponibles", instalación y updates desde el catálogo, firma ed25519 de los first-party en el release.
 
 Boards (user stories) entra como vista del plugin de Azure DevOps después de la fase 3; no necesita nada nuevo del host.

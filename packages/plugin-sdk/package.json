@@ -16,6 +16,10 @@
     "./pack": {
       "types": "./pack/zip.d.mts",
       "default": "./pack/zip.mjs"
+    },
+    "./catalog": {
+      "types": "./pack/catalog.d.mts",
+      "default": "./pack/catalog.mjs"
     }
   },
   "scripts": {
