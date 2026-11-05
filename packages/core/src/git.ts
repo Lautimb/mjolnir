@@ -85,6 +85,28 @@ export function createGit(exec: Exec, paths: PathApi) {
     async changedFiles(dir: string): Promise<number> {
       return lines(await git(dir, 'status', '--porcelain=v1')).length
     },
+
+    async remoteUrl(repo: string, remote = 'origin'): Promise<string | null> {
+      return orNull(git(repo, 'remote', 'get-url', remote))
+    },
+
+    async fetchRef(repo: string, source: string, target: string, remote = 'origin'): Promise<void> {
+      await git(repo, 'fetch', '--no-tags', remote, `+${source}:${target}`)
+    },
+
+    async publishState(dir: string): Promise<{ upstream: string | null; ahead: number }> {
+      const upstream = await orNull(git(dir, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'))
+      if (!upstream) return { upstream: null, ahead: 0 }
+      return { upstream, ahead: Number((await git(dir, 'rev-list', '--count', '@{upstream}..HEAD')).trim()) }
+    },
+
+    async mergeBase(dir: string, a: string, b: string): Promise<string | null> {
+      return orNull(git(dir, 'merge-base', a, b))
+    },
+
+    async push(dir: string, branch: string, remote = 'origin'): Promise<void> {
+      await git(dir, 'push', '--set-upstream', remote, branch)
+    },
   }
 }
 

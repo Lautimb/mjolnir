@@ -24,10 +24,8 @@ import {
 } from '@mjolnir/core'
 import type { DiffFile, SessionDiff } from '../shared/api'
 import { AppError } from '../shared/errors'
+import { diffContent, MAX_DIFF_BYTES } from './diff-content'
 import type { Store } from './store'
-
-const MAX_DIFF_BYTES = 1.5 * 1024 * 1024
-const BINARY_SNIFF_BYTES = 8000
 
 const sessionKey = (repoId: string, path: string) => `${repoId}::${path}`
 
@@ -106,26 +104,26 @@ export class Workspace {
   }
 
   async diffFile(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile> {
-    const repo = this.repo(repoId)
+    const { repo, diff } = this.open(repoId)
     if (change.binary) return { kind: 'binary' }
-
-    const modified = change.status === 'deleted' ? Buffer.alloc(0) : await this.readWorkingFile(repo, path, change.path)
-    if (modified === 'too-large') return { kind: 'too-large' }
-    if (modified.subarray(0, BINARY_SNIFF_BYTES).includes(0)) return { kind: 'binary' }
-
-    const original = await createDiff(createHostExec(repo.host)).original(path, from, change)
-    if (original.length > MAX_DIFF_BYTES) return { kind: 'too-large' }
-    return { kind: 'text', original, modified: modified.toString('utf8') }
+    const modified = change.status === 'deleted' ? '' : await this.readWorkingFile(repo, path, change.path)
+    if (modified === null) return { kind: 'too-large' }
+    return diffContent(await diff.original(path, from, change), modified)
   }
 
-  private async readWorkingFile(repo: Repo, dir: string, file: string): Promise<Buffer | 'too-large'> {
+  private async readWorkingFile(repo: Repo, dir: string, file: string): Promise<string | null> {
     const nativePath = toNativePath(process.platform, repo.host, hostPath(repo.host).join(dir, file))
-    if ((await stat(nativePath)).size > MAX_DIFF_BYTES) return 'too-large'
-    return readFile(nativePath)
+    if ((await stat(nativePath)).size > MAX_DIFF_BYTES) return null
+    return readFile(nativePath, 'utf8')
   }
 
   async changedFiles(repoId: string, path: string): Promise<number> {
     return this.git(this.repo(repoId)).changedFiles(path)
+  }
+
+  open(repoId: string): { repo: Repo; git: Git; diff: ReturnType<typeof createDiff> } {
+    const repo = this.repo(repoId)
+    return { repo, git: this.git(repo), diff: createDiff(createHostExec(repo.host)) }
   }
 
   private repo(id: string): Repo {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { LOCALE_IDS, type LanguagePreference } from '../../shared/locales'
 import type { Settings } from '../../shared/settings'
+import { AccountsSettings } from './AccountsSettings'
 import { LOCALES } from './i18n/catalog'
 import { useI18n } from './i18n/I18nProvider'
 
@@ -71,6 +72,11 @@ export function SettingsView({ settings, onChange }: Props) {
               ))}
             </select>
           </Setting>
+        </section>
+
+        <section>
+          <h2>{t('accounts.title')}</h2>
+          <AccountsSettings />
         </section>
 
         <section>

@@ -16,7 +16,11 @@ import icon from '../../resources/icon.png?asset'
 import type { SpawnRequest } from '../shared/api'
 import { AppError } from '../shared/errors'
 import { TITLEBAR_HEIGHT, type Settings } from '../shared/settings'
+import { Accounts } from './accounts'
+import { registerAccountsIpc } from './ipc/accounts'
+import { registerPullsIpc } from './ipc/pulls'
 import { PtyManager } from './pty'
+import { Pulls } from './pulls'
 import { Store } from './store'
 import { Workspace } from './workspace'
 
@@ -146,7 +150,11 @@ function registerIpc(workspace: Workspace, store: Store): void {
 
 void app.whenReady().then(() => {
   const store = new Store(join(app.getPath('userData'), 'workspace.json'))
-  registerIpc(new Workspace(store), store)
+  const workspace = new Workspace(store)
+  const accounts = new Accounts(join(app.getPath('userData'), 'accounts.json'), repoHosts)
+  registerIpc(workspace, store)
+  registerAccountsIpc(accounts)
+  registerPullsIpc(new Pulls(workspace, accounts))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
