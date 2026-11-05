@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isSafeRef, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
+import { isOriginPattern, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
 import type { Settings } from '../shared/settings'
@@ -67,3 +68,7 @@ export const settings = z.object({
 }) satisfies z.ZodType<Settings>
 
 export const settingsPatch = settings.partial().strict()
+
+export const grantedPermissions: z.ZodType<GrantablePermissions> = z
+  .object({ network: z.array(z.string().refine(isOriginPattern)).max(50).optional() })
+  .strict()

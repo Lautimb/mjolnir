@@ -4,7 +4,7 @@ import { defineConfig } from 'electron-vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-const bundleWorkspace = { exclude: ['@mjolnir/core'] }
+const bundleWorkspace = { exclude: ['@mjolnir/core', '@mjolnir/plugin-sdk'] }
 const monacoVs = path.resolve(path.dirname(createRequire(import.meta.url).resolve('monaco-editor/editor/editor.api.js')), '..')
 
 export default defineConfig({

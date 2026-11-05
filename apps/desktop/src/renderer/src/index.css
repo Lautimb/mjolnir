@@ -2,7 +2,7 @@
 
 @custom-variant panel-right (&:where([data-panel='right'] *));
 
-@theme {
+@theme static {
   --color-*: initial;
   --color-canvas: #111216;
   --color-surface: #16171c;

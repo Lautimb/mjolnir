@@ -1,9 +1,16 @@
 import type { ReactNode } from 'react'
 import { GitCompare, GitPullRequest, Layers, Puzzle, Settings } from 'lucide-react'
 import { useI18n } from '../i18n/I18nProvider'
+import type { PluginViewKey } from '../plugins/model'
 import { cx } from '../ui/cx'
 
-export type View = 'sessions' | 'diff' | 'pulls' | 'settings'
+export type View = 'sessions' | 'diff' | 'pulls' | 'settings' | 'plugins' | PluginViewKey
+
+export interface RailPluginView {
+  key: PluginViewKey
+  title: string
+  iconUrl: string | null
+}
 
 const MAX_BADGE = 99
 
@@ -33,13 +40,19 @@ function RailItem({ title, active, disabled, onClick, children }: ItemProps) {
   )
 }
 
+function PluginIcon({ url }: { url: string | null }) {
+  if (!url) return <Puzzle size={18} />
+  return <span aria-hidden className="size-[18px] bg-current mask-contain mask-center mask-no-repeat" style={{ maskImage: `url("${url}")` }} />
+}
+
 interface Props {
   view: View
   changes: number | null
+  pluginViews: RailPluginView[]
   onChange(view: View): void
 }
 
-export function Rail({ view, changes, onChange }: Props) {
+export function Rail({ view, changes, pluginViews, onChange }: Props) {
   const { t } = useI18n()
   const toggle = (target: View) => onChange(view === target ? 'sessions' : target)
 
@@ -69,10 +82,17 @@ export function Rail({ view, changes, onChange }: Props) {
       <RailItem title={t('rail.pullRequests')} active={view === 'pulls'} onClick={() => toggle('pulls')}>
         <GitPullRequest size={18} />
       </RailItem>
-      <RailItem title={t('common.soon', { feature: t('rail.plugins') })} disabled>
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 self-stretch overflow-y-auto [scrollbar-width:none]">
+        {!!pluginViews.length && <div className="my-1 h-px w-6 flex-none bg-line-strong" />}
+        {pluginViews.map((entry) => (
+          <RailItem key={entry.key} title={entry.title} active={view === entry.key} onClick={() => toggle(entry.key)}>
+            <PluginIcon url={entry.iconUrl} />
+          </RailItem>
+        ))}
+      </div>
+      <RailItem title={t('plugins.manage')} active={view === 'plugins'} onClick={() => toggle('plugins')}>
         <Puzzle size={18} />
       </RailItem>
-      <div className="flex-1" />
       <RailItem title={t('rail.settings')} active={view === 'settings'} onClick={() => toggle('settings')}>
         <Settings size={18} />
       </RailItem>

@@ -1,5 +1,3 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import { safeStorage } from 'electron'
 import {
   createHostExec,
@@ -13,6 +11,7 @@ import {
 } from '@mjolnir/core'
 import type { ProviderInfo } from '../shared/api'
 import { AppError } from '../shared/errors'
+import { readJson, writeJsonAtomic } from './json-file'
 import { adapterFor, authMethods, PROVIDERS, type ProviderAdapter } from './providers'
 
 interface StoredAccount extends Account {
@@ -152,18 +151,11 @@ export class Accounts {
   }
 
   private load(): StoredAccount[] {
-    try {
-      return JSON.parse(readFileSync(this.file, 'utf8')) as StoredAccount[]
-    } catch {
-      return []
-    }
+    return (readJson(this.file) as StoredAccount[] | null) ?? []
   }
 
   private persist(): void {
-    mkdirSync(dirname(this.file), { recursive: true })
-    const temp = `${this.file}.tmp`
-    writeFileSync(temp, JSON.stringify(this.accounts, null, 2))
-    renameSync(temp, this.file)
+    writeJsonAtomic(this.file, this.accounts)
   }
 }
 

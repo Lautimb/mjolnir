@@ -17,6 +17,9 @@ importers:
       '@mjolnir/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mjolnir/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
       '@tailwindcss/vite':
         specifier: 4.3.3
         version: 4.3.3(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))
@@ -89,6 +92,31 @@ importers:
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/plugin-sdk:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))
+
+  plugins/hello:
+    devDependencies:
+      '@mjolnir/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.5
+        version: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)
 
 packages:
 

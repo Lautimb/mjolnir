@@ -16,6 +16,8 @@ import type {
   TerminalProfile,
   Worktree,
 } from '@mjolnir/core/browser'
+import type { GrantablePermissions } from '@mjolnir/plugin-sdk'
+import type { PluginManifest } from '@mjolnir/plugin-sdk/manifest'
 import type { Settings } from './settings'
 
 export interface SpawnRequest {
@@ -56,6 +58,24 @@ export interface PullRequestDiff {
   from: string
   to: string
   files: FileChange[]
+}
+
+export type PluginStatus =
+  | { kind: 'ready' }
+  | { kind: 'missing' }
+  | { kind: 'invalid'; issue: string }
+  | { kind: 'incompatible'; reason: 'app' | 'api'; required: string }
+
+export interface PluginInfo {
+  id: string
+  source: { kind: 'folder'; path: string }
+  enabled: boolean
+  active: boolean
+  status: PluginStatus
+  manifest: PluginManifest | null
+  strings: Record<string, Record<string, string>>
+  pending: GrantablePermissions
+  revision: number
 }
 
 export interface MjolnirApi {
@@ -115,6 +135,15 @@ export interface MjolnirApi {
   diff: {
     compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff>
     file(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile>
+  }
+  plugins: {
+    list(): Promise<PluginInfo[]>
+    addFolder(title: string): Promise<PluginInfo | null>
+    enable(id: string, approved: GrantablePermissions): Promise<void>
+    disable(id: string): Promise<void>
+    remove(id: string): Promise<void>
+    connect(id: string, nonce: string): void
+    onChange(listener: () => void): () => void
   }
   pty: {
     spawn(request: SpawnRequest): Promise<void>

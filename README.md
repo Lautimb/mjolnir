@@ -7,7 +7,8 @@ Workspace de escritorio para trabajar con agentes (Claude Code, opencode), termi
 ```
 apps/desktop      Electron (main, preload, renderer React)
 packages/core     Dominio sin Electron: perfiles de terminal, hosts, git
-plugins/          Plugins instalables (próximamente)
+packages/plugin-sdk  API para plugins (manifest, cliente, permisos, tema)
+plugins/          Plugins first-party (ver docs/plugins.md)
 ```
 
 ## Desarrollo

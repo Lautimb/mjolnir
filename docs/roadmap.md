@@ -40,7 +40,8 @@ apps/desktop          Electron
   src/shared          contratos entre main y renderer: api, settings, errors, locales
   src/renderer/src    React por feature: app, sessions, terminals, diff, pulls, settings, ui, i18n
 packages/core         dominio sin Electron: hosts, perfiles, git, branches, diff, refs, proveedores
-plugins/              (próximamente)
+packages/plugin-sdk   API para plugins: manifest, protocolo, cliente, permisos, tema
+plugins/              plugins first-party (hello es el ejemplo)
 docs/                 este documento
 ```
 
@@ -73,11 +74,13 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 ## Próximos pasos
 
-### 1. Sistema de plugins (siguiente)
+### 1. Sistema de plugins (en curso)
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-A definir en el diseño (primer entregable: un documento en `docs/plugins.md` antes de codear):
+Diseño y fases en [`docs/plugins.md`](plugins.md). Fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker con storage/secretos/HTTP, vista de Plugins, `plugins/hello`) hecha. Sigue la fase 2 (cliente HTTP).
+
+Lo que cubre el diseño:
 
 - **Formato del paquete**: manifest (`id`, versión, versión mínima de Mjolnir, contribuciones, permisos) + bundle de main y/o renderer.
 - **Puntos de contribución**: proveedores de cuentas/PRs, vistas en el rail, secciones de ajustes, comandos.

@@ -1,0 +1,67 @@
+@import '@mjolnir/plugin-sdk/base.css';
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: var(--text-xl);
+}
+
+h2 {
+  margin: 24px 0 8px;
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+p {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+button,
+input {
+  height: var(--spacing-control);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+button {
+  background: var(--color-hover);
+  color: var(--color-fg);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-selected);
+}
+
+input {
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+pre {
+  margin: 8px 0 0;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: var(--text-sm) / 1.45 var(--font-mono);
+  white-space: pre-wrap;
+}

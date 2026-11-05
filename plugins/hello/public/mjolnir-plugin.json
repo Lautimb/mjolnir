@@ -1,0 +1,14 @@
+{
+  "id": "hello",
+  "version": "0.1.0",
+  "engines": { "mjolnir": ">=0.1.0", "api": 1 },
+  "name": "%name%",
+  "description": "%description%",
+  "locales": { "es": "locales/es.json", "en": "locales/en.json" },
+  "contributes": {
+    "views": [{ "id": "main", "title": "%view%", "icon": "icons/hello.svg", "entry": "index.html" }]
+  },
+  "permissions": {
+    "network": ["https://api.github.com"]
+  }
+}

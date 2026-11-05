@@ -1,0 +1,21 @@
+{
+  "name": "Hello",
+  "description": "Sample plugin that uses the whole API: storage, secrets, HTTP and notifications.",
+  "view": "Hello",
+  "title": "Hello from a plugin",
+  "intro": "This plugin runs isolated in its own origin and asks Mjolnir for everything.",
+  "storage": "Storage",
+  "count": "You counted {count} times",
+  "increment": "Add one",
+  "secrets": "Secrets",
+  "secretPlaceholder": "A secret value",
+  "save": "Save",
+  "secretSaved": "A secret is saved ({length} characters).",
+  "secretEmpty": "No secret saved.",
+  "network": "Network",
+  "fetch": "Ask api.github.com for a quote",
+  "blocked": "Try a site without permission",
+  "notify": "Notify",
+  "notice": "Hello from the plugin",
+  "openDocs": "Open the GitHub API"
+}
