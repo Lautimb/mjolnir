@@ -1,6 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync, watch, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, watch, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const mode = process.argv[2]
@@ -14,11 +14,12 @@ if (!process.env.WSL_DISTRO_NAME) {
 }
 
 const root = path.resolve(import.meta.dirname, '..')
-const EXCLUDES = ['node_modules', 'out', 'dist', 'release', '.git', '.install-hash']
+const SHIMS = '.corepack-bin'
+const EXCLUDES = ['node_modules', 'out', 'dist', 'release', '.git', '.install-hash', SHIMS]
 const WINDOWS_CWD = '/mnt/c'
 
 const windows = (command, options = {}) =>
-  spawn('cmd.exe', ['/c', `cd /d ${winTarget} && set COREPACK_ENABLE_DOWNLOAD_PROMPT=0&& ${command}`], {
+  spawn('cmd.exe', ['/c', `cd /d ${winTarget} && set COREPACK_ENABLE_DOWNLOAD_PROMPT=0&& set PATH=${winTarget}\\${SHIMS};%PATH%&& ${command}`], {
     cwd: WINDOWS_CWD,
     stdio: 'inherit',
     ...options,
@@ -46,6 +47,16 @@ function manifests() {
   )
 }
 
+function exposePnpm() {
+  if (existsSync(path.join(target, SHIMS, 'pnpm.cmd'))) return Promise.resolve()
+  mkdirSync(path.join(target, SHIMS), { recursive: true })
+  return new Promise((resolve, reject) => {
+    windows(`corepack enable pnpm --install-directory ${SHIMS}`).on('exit', (code) =>
+      code === 0 ? resolve() : reject(new Error(`corepack enable salió con código ${code}`)),
+    )
+  })
+}
+
 function installIfNeeded() {
   const hash = createHash('sha256')
   for (const file of ['pnpm-lock.yaml', ...manifests()]) hash.update(readFileSync(path.join(root, file)))
@@ -55,7 +66,7 @@ function installIfNeeded() {
 
   console.log(`[windows] instalando dependencias en ${winTarget}…`)
   return new Promise((resolve, reject) => {
-    windows('corepack pnpm install --frozen-lockfile').on('exit', (code) => {
+    windows('pnpm install --frozen-lockfile').on('exit', (code) => {
       if (code !== 0) return reject(new Error(`pnpm install salió con código ${code}`))
       writeFileSync(marker, digest)
       resolve()
@@ -91,11 +102,13 @@ function killWindowsProcesses() {
 
 console.log(`[windows] sincronizando a ${winTarget}`)
 sync()
+await exposePnpm()
 await installIfNeeded()
 
 function installApp() {
   const script = `
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 $source = '${winTarget}'
 $dest = Join-Path $env:LOCALAPPDATA 'Programs\\Mjolnir'
 $resources = "$source\\apps\\desktop\\release\\win-unpacked\\resources"
@@ -117,14 +130,14 @@ Write-Output "$dest"
 }
 
 if (mode === 'app') {
-  windows('corepack pnpm --filter @mjolnir/desktop package:dir').on('exit', (code) => {
+  windows('pnpm --filter @mjolnir/desktop package:dir').on('exit', (code) => {
     if (code !== 0) process.exit(code ?? 1)
     const dest = installApp()
     console.log(`[windows] Mjolnir instalado en ${dest}. Abrilo desde el menú Inicio.`)
     process.exit(0)
   })
 } else if (mode === 'package') {
-  windows('corepack pnpm --filter @mjolnir/desktop package').on('exit', (code) => {
+  windows('pnpm --filter @mjolnir/desktop package').on('exit', (code) => {
     if (code !== 0) process.exit(code ?? 1)
     const release = `${winTarget}\\apps\\desktop\\release`
     console.log(`[windows] instalador listo en ${release}`)
@@ -144,7 +157,7 @@ if (mode === 'app') {
     }, 150)
   })
 
-  const dev = windows('corepack pnpm --filter @mjolnir/desktop dev')
+  const dev = windows('pnpm --filter @mjolnir/desktop dev')
 
   const shutdown = () => {
     stopWatching()
