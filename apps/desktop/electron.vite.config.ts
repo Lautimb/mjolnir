@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { defineConfig } from 'electron-vite'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 const bundleWorkspace = { exclude: ['@mjolnir/core'] }
@@ -14,7 +15,8 @@ export default defineConfig({
     build: { externalizeDeps: bundleWorkspace },
   },
   renderer: {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
+    build: { minify: true },
     resolve: {
       alias: {
         'monaco-editor-codicons.css': path.join(monacoVs, 'base/browser/ui/codicons/codicon/codicon.css'),

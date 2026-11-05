@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { Repo } from '@mjolnir/core'
 import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
+import { settings as settingsSchema } from './schemas'
 
 interface StoreData {
   repos: Repo[]
@@ -55,7 +56,7 @@ export class Store {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<StoreData>
       return {
         repos: parsed.repos ?? [],
-        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+        settings: { ...DEFAULT_SETTINGS, ...settingsSchema.partial().catch({}).parse(parsed.settings) },
         sessionBases: parsed.sessionBases ?? {},
       }
     } catch {

@@ -2,10 +2,17 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ExternalLink } from 'lucide-react'
 import type { FileChange, PullRequestComment, PullRequestDetail as Detail } from '@mjolnir/core/browser'
 import type { PullRequestDiff } from '../../../shared/api'
-import { DiffBrowser } from '../DiffBrowser'
+import { DiffBrowser } from '../diff/DiffBrowser'
+import { Stats } from '../diff/Stats'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import { useRelativeTime } from '../i18n/useRelativeTime'
+import { Avatar } from '../ui/Avatar'
+import { Button } from '../ui/Button'
+import { Note } from '../ui/EmptyState'
+import { TextArea } from '../ui/fields'
+import { Segmented } from '../ui/Segmented'
 import { DetailBadges } from './PullBadges'
+import { PullNumber } from './PullRow'
 
 interface Props {
   repoId: string
@@ -16,16 +23,18 @@ interface Props {
 
 type Tab = 'conversation' | 'files'
 
+const DETAIL = 'flex min-h-0 min-w-0 flex-col'
+
 function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'body' | 'createdAt'> }) {
   const ago = useRelativeTime()
   return (
-    <article className="pull-comment">
-      <header>
-        {comment.author.avatarUrl && <img className="avatar" src={comment.author.avatarUrl} alt="" />}
-        <strong>{comment.author.login}</strong>
+    <article className="overflow-hidden rounded-md border border-line-strong">
+      <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2 text-sm text-muted">
+        <Avatar url={comment.author.avatarUrl} />
+        <strong className="text-fg">{comment.author.login}</strong>
         <span>{ago(new Date(comment.createdAt))}</span>
       </header>
-      <div className="pull-comment-body">{comment.body}</div>
+      <div className="p-3 break-words whitespace-pre-wrap">{comment.body}</div>
     </article>
   )
 }
@@ -79,51 +88,59 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide }: 
   }
 
   if (!detail) {
-    return <div className="pull-detail">{error !== null && <p className="diff-error">{describeError(t, error)}</p>}</div>
+    return <div className={DETAIL}>{error !== null && <Note error>{describeError(t, error)}</Note>}</div>
   }
 
   return (
-    <div className="pull-detail">
-      <header className="pull-header">
-        <h2>
-          {detail.title} <span className="pull-number">#{detail.number}</span>
+    <div className={DETAIL}>
+      <header className="flex flex-col gap-2 border-b border-line px-6 pt-4 pb-3">
+        <h2 className="text-xl font-semibold">
+          {detail.title} <PullNumber number={detail.number} />
         </h2>
-        <div className="pull-meta">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <DetailBadges pull={detail} />
           <span>{t('pulls.openedBy', { author: detail.author.login, when: ago(new Date(detail.createdAt)) })}</span>
-          <code>
+          <code className="font-mono">
             {detail.headRef} → {detail.baseRef}
           </code>
-          <button className="button ghost" onClick={() => window.open(detail.url)}>
+          <Button variant="ghost" onClick={() => window.open(detail.url)}>
             <ExternalLink size={13} />
             {t('pulls.openInProvider', { provider: providerName })}
-          </button>
+          </Button>
         </div>
-        <div className="segmented pull-tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'conversation'} className={tab === 'conversation' ? 'selected' : undefined} onClick={() => setTab('conversation')}>
-            {t('pulls.tabs.conversation')}
-          </button>
-          <button role="tab" aria-selected={tab === 'files'} className={tab === 'files' ? 'selected' : undefined} onClick={() => setTab('files')}>
-            {t('pulls.tabs.files')} <span className="pull-count">{detail.changedFiles}</span>
-            <span className="added">+{detail.additions}</span>
-            <span className="removed">−{detail.deletions}</span>
-          </button>
-        </div>
+        <Segmented
+          className="self-start"
+          value={tab}
+          options={[
+            { value: 'conversation', label: t('pulls.tabs.conversation') },
+            {
+              value: 'files',
+              label: (
+                <>
+                  {t('pulls.tabs.files')}
+                  <span className="rounded-full bg-hover px-1.5 text-xs">{detail.changedFiles}</span>
+                  <Stats additions={detail.additions} deletions={detail.deletions} />
+                </>
+              ),
+            },
+          ]}
+          onChange={setTab}
+        />
       </header>
 
-      {error !== null && <p className="diff-error">{describeError(t, error)}</p>}
+      {error !== null && <Note error>{describeError(t, error)}</Note>}
 
       {tab === 'conversation' ? (
-        <div className="pull-conversation">
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
           <Comment comment={{ author: detail.author, body: detail.body || t('pulls.noDescription'), createdAt: detail.createdAt }} />
           {comments.map((comment) => (
             <Comment key={comment.id} comment={comment} />
           ))}
-          <form className="pull-reply" onSubmit={submit}>
-            <textarea placeholder={t('pulls.commentPlaceholder')} value={draft} onChange={(event) => setDraft(event.target.value)} rows={4} />
-            <button type="submit" className="button primary" disabled={sending || !draft.trim()}>
+          <form className="flex flex-col items-end gap-2" onSubmit={submit}>
+            <TextArea placeholder={t('pulls.commentPlaceholder')} value={draft} onChange={(event) => setDraft(event.target.value)} rows={4} />
+            <Button type="submit" variant="primary" disabled={sending || !draft.trim()}>
               {sending ? t('pulls.commenting') : t('pulls.comment')}
-            </button>
+            </Button>
           </form>
         </div>
       ) : (

@@ -51,6 +51,7 @@ export const es = {
     from: 'Desde',
     existsRemote: 'Existe en el remoto: se crea local siguiendo {branch}.',
     existsLocal: 'Ya existe localmente: se abre esa branch.',
+    invalidBranch: 'Ese nombre no es válido para una rama de git.',
     creating: 'Creando…',
     open: 'Abrir sesión',
     create: 'Crear sesión',
@@ -246,7 +247,10 @@ export const es = {
   },
   errors: {
     noTerminal: 'No hay una terminal disponible para este host.',
+    invalidRequest: 'Mjolnir rechazó un pedido inválido ({channel}).',
     unknownRepo: 'Repo desconocido: {id}',
+    unknownWorktree: 'La carpeta {path} no es un worktree de este repo.',
+    worktreeDirty: '{name} tiene cambios sin commitear.',
     unknownProfile: 'Perfil de terminal desconocido: {id}',
     worktreeMissing: 'El worktree no aparece en {path}',
     unsupportedRemote: 'El remoto de este repo no corresponde a ningún proveedor soportado.',

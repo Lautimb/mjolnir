@@ -56,8 +56,9 @@ export class Pulls {
 
   async create(repoId: string, worktreePath: string, input: CreatePullRequestInput) {
     const { git } = this.workspace.open(repoId)
-    const state = await git.publishState(worktreePath)
-    if (!state.upstream || state.ahead > 0) await git.push(worktreePath, input.head)
+    const worktree = await this.workspace.worktree(repoId, worktreePath)
+    const state = await git.publishState(worktree.path)
+    if (!state.upstream || state.ahead > 0) await git.push(worktree.path, input.head)
     return this.call(repoId, (pulls, remote) => pulls.create(remote, input))
   }
 

@@ -2,12 +2,16 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { GitPullRequest, GitPullRequestCreate, RefreshCw } from 'lucide-react'
 import type { PullRequestFilter, PullRequestStateFilter, PullRequestSummary } from '@mjolnir/core/browser'
 import type { PullRequestContext } from '../../../shared/api'
+import { MAIN_AREA, MAIN_COLUMN, TOOLBAR } from '../app/layout'
 import { describeError, useI18n } from '../i18n/I18nProvider'
-import { useRelativeTime } from '../i18n/useRelativeTime'
-import type { Session } from '../model'
+import type { Session } from '../sessions/model'
+import { Button, IconButton } from '../ui/Button'
+import { EmptyState, Note } from '../ui/EmptyState'
+import { MenuSection } from '../ui/Menu'
+import { Segmented } from '../ui/Segmented'
 import { CreatePullRequestForm } from './CreatePullRequestForm'
-import { StateBadge } from './PullBadges'
 import { PullRequestDetail } from './PullRequestDetail'
+import { PullRow, rowClass } from './PullRow'
 
 interface Props {
   session: Session
@@ -21,31 +25,10 @@ const FILTERS: PullRequestFilter[] = ['mine', 'review', 'all']
 
 const STATES: PullRequestStateFilter[] = ['open', 'closed', 'all']
 
-function PullRow({ pull, selected, onSelect }: { pull: PullRequestSummary; selected: boolean; onSelect(): void }) {
-  const ago = useRelativeTime()
-  return (
-    <button className={`pull-row${selected ? ' selected' : ''}`} onClick={onSelect}>
-      <span className="pull-row-title">
-        <span className="pull-number">#{pull.number}</span> {pull.title}
-      </span>
-      <span className="pull-row-meta">
-        <StateBadge pull={pull} />
-        {pull.author.avatarUrl && <img className="avatar small" src={pull.author.avatarUrl} alt="" />}
-        <span>{pull.author.login}</span>
-        <span className="pull-row-branch">{pull.headRef}</span>
-        <span>{ago(new Date(pull.updatedAt))}</span>
-      </span>
-    </button>
-  )
-}
-
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <section className="pulls-view empty">
-      <div className="diff-empty">
-        <GitPullRequest size={22} />
-        {children}
-      </div>
+    <section className={MAIN_COLUMN}>
+      <EmptyState icon={<GitPullRequest size={22} />}>{children}</EmptyState>
     </section>
   )
 }
@@ -110,9 +93,9 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
     return (
       <Empty>
         <p>{t('errors.noAccount', { provider: context.provider.displayName })}</p>
-        <button className="button primary" onClick={onOpenSettings}>
+        <Button variant="primary" onClick={onOpenSettings}>
           {t('pulls.connect')}
-        </button>
+        </Button>
       </Empty>
     )
   }
@@ -120,44 +103,42 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
   const canOpenPull = branch !== null && branch !== context.defaultBranch
   const shownAbove = canOpenPull && sessionPull ? sessionPull.number : null
   const listed = pulls?.filter((pull) => pull.number !== shownAbove)
+  const isSelected = (number: number) => selection?.kind === 'pull' && selection.number === number
+  const select = (number: number) => () => setSelection({ kind: 'pull', number })
 
   return (
-    <section className="pulls-view">
-      <aside className="pulls-list">
-        <header className="diff-toolbar">
-          <div className="segmented" role="radiogroup">
-            {FILTERS.map((option) => (
-              <button key={option} className={filter === option ? 'selected' : undefined} onClick={() => setFilter(option)}>
-                {t(`pulls.filters.${option}`)}
-              </button>
-            ))}
-          </div>
-          <span className="status-spacer" />
-          <button className="icon-button" title={t('common.refresh')} onClick={() => setReload((value) => value + 1)}>
+    <section className={`${MAIN_AREA} grid grid-cols-[minmax(280px,360px)_minmax(0,1fr)]`}>
+      <aside className="flex min-h-0 flex-col border-r border-line bg-surface">
+        <header className={TOOLBAR}>
+          <Segmented
+            size="sm"
+            value={filter}
+            options={FILTERS.map((option) => ({ value: option, label: t(`pulls.filters.${option}`) }))}
+            onChange={setFilter}
+          />
+          <span className="flex-1" />
+          <IconButton title={t('common.refresh')} onClick={() => setReload((value) => value + 1)}>
             <RefreshCw size={14} />
-          </button>
+          </IconButton>
         </header>
         {!pendingReviewsOnly && (
-          <div className="pulls-filters segmented" role="radiogroup" aria-label={t('pulls.stateLabel')}>
-            {STATES.map((option) => (
-              <button key={option} className={stateFilter === option ? 'selected' : undefined} onClick={() => setStateFilter(option)}>
-                {t(`pulls.stateFilters.${option}`)}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            size="xs"
+            label={t('pulls.stateLabel')}
+            className="mx-3 my-2 self-start"
+            value={stateFilter}
+            options={STATES.map((option) => ({ value: option, label: t(`pulls.stateFilters.${option}`) }))}
+            onChange={setStateFilter}
+          />
         )}
 
         {canOpenPull && sessionPull !== undefined && (
-          <div className="pulls-session">
-            <div className="menu-section">{t('pulls.thisSession')}</div>
+          <div className="border-b border-line px-2 pt-1 pb-2">
+            <MenuSection>{t('pulls.thisSession')}</MenuSection>
             {sessionPull ? (
-              <PullRow
-                pull={sessionPull}
-                selected={selection?.kind === 'pull' && selection.number === sessionPull.number}
-                onSelect={() => setSelection({ kind: 'pull', number: sessionPull.number })}
-              />
+              <PullRow pull={sessionPull} selected={isSelected(sessionPull.number)} onSelect={select(sessionPull.number)} />
             ) : (
-              <button className={`pull-row create${selection?.kind === 'create' ? ' selected' : ''}`} onClick={() => setSelection({ kind: 'create' })}>
+              <button className={rowClass(selection?.kind === 'create', 'items-center gap-2 text-accent')} onClick={() => setSelection({ kind: 'create' })}>
                 <GitPullRequestCreate size={15} />
                 {t('pulls.createFor', { branch })}
               </button>
@@ -165,17 +146,10 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
           </div>
         )}
 
-        <div className="pulls-items">
-          {error !== null && <p className="diff-note error">{describeError(t, error)}</p>}
-          {listed?.length === 0 && shownAbove === null && <p className="diff-note">{t(`pulls.empty.${filter}`)}</p>}
-          {listed?.map((pull) => (
-            <PullRow
-              key={pull.number}
-              pull={pull}
-              selected={selection?.kind === 'pull' && selection.number === pull.number}
-              onSelect={() => setSelection({ kind: 'pull', number: pull.number })}
-            />
-          ))}
+        <div className="flex-1 overflow-y-auto p-2">
+          {error !== null && <Note error>{describeError(t, error)}</Note>}
+          {listed?.length === 0 && shownAbove === null && <Note>{t(`pulls.empty.${filter}`)}</Note>}
+          {listed?.map((pull) => <PullRow key={pull.number} pull={pull} selected={isSelected(pull.number)} onSelect={select(pull.number)} />)}
         </div>
       </aside>
 
@@ -192,9 +166,9 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
         />
       )}
       {!selection && (
-        <div className="diff-empty">
+        <EmptyState>
           <p>{t('pulls.pickOne')}</p>
-        </div>
+        </EmptyState>
       )}
     </section>
   )

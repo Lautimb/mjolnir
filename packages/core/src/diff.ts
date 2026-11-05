@@ -1,4 +1,5 @@
 import type { Exec } from './git'
+import { safeRef } from './refs'
 
 export type ChangeStatus = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
 
@@ -70,11 +71,11 @@ export function createDiff(exec: Exec) {
       const head = await tryGit(dir, 'rev-parse', '--verify', '--quiet', 'HEAD')
       if (!head) return EMPTY_TREE
       if (mode === 'working' || !base) return 'HEAD'
-      return (await tryGit(dir, 'merge-base', 'HEAD', base)) ?? base
+      return (await tryGit(dir, 'merge-base', 'HEAD', safeRef(base))) ?? base
     },
 
     async files(dir: string, from: string, to?: string): Promise<FileChange[]> {
-      const range = to ? [from, to] : [from]
+      const range = to ? [safeRef(from), safeRef(to)] : [safeRef(from)]
       const [nameStatus, numstat, untracked] = await Promise.all([
         git(dir, 'diff', '--name-status', '-z', '-M', ...range),
         git(dir, 'diff', '--numstat', '-z', '-M', ...range),
@@ -94,12 +95,12 @@ export function createDiff(exec: Exec) {
 
     async original(dir: string, from: string, change: FileChange): Promise<string> {
       if (change.status === 'added' || change.status === 'untracked' || from === EMPTY_TREE) return ''
-      return git(dir, 'show', `${from}:${change.oldPath ?? change.path}`)
+      return git(dir, 'show', `${safeRef(from)}:${change.oldPath ?? change.path}`)
     },
 
     async modified(dir: string, to: string, change: FileChange): Promise<string> {
       if (change.status === 'deleted') return ''
-      return git(dir, 'show', `${to}:${change.path}`)
+      return git(dir, 'show', `${safeRef(to)}:${change.path}`)
     },
   }
 }

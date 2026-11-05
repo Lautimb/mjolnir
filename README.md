@@ -43,6 +43,12 @@ pnpm package:win  # genera el instalador NSIS en el espejo (apps\desktop\release
 
 `app:win` corre la app con el `electron.exe` oficial porque Smart App Control bloquea ejecutables sin firma. `package:win` funciona en máquinas sin Smart App Control o cuando el ejecutable esté firmado.
 
+## Convenciones
+
+- **Renderer por feature**: `app`, `sessions`, `terminals`, `diff`, `pulls`, `settings`. Lo compartido entre features va a `ui/`.
+- **Estilos con Tailwind**: el tema (colores, tipografía, radios, medidas) está en `src/renderer/src/index.css` y es la única fuente de tokens. Un patrón que se repite se vuelve un componente de `ui/`, no una clase global. Para estados, usar ramas excluyentes (`selected ? 'bg-selected' : 'hover:bg-hover'`): dos utilidades de la misma propiedad en un elemento no tienen ganador predecible.
+- **IPC**: cada canal se registra en `src/main/ipc/<dominio>.ts` con `handle(canal, [schemas], handler)`. Los argumentos se validan con los schemas de `src/main/schemas.ts` y solo se aceptan mensajes del renderer de la app.
+
 ## Idiomas
 
 Los textos de la interfaz viven en `apps/desktop/src/renderer/src/i18n/locales/`. `es.ts` es la fuente de verdad: las claves y los parámetros de `t()` se tipan a partir de ese archivo.

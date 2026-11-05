@@ -110,6 +110,22 @@ describe('createGitHubClient', () => {
     ])
   })
 
+  it('sends only the known fields when creating a pull request', async () => {
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls': pull() })
+    const input = { head: 'feat/x', base: 'main', title: 'T', body: 'B', draft: false, maintainer_can_modify: false }
+    await createGitHubClient({ token: 't', fetch }).create(repo, input)
+    expect(Object.keys(JSON.parse(String(calls[0]!.init.body)))).toEqual(['head', 'base', 'title', 'body', 'draft'])
+  })
+
+  it('refuses pull request numbers that would rewrite the API path, before calling the API', async () => {
+    const { fetch, calls } = fakeFetch({})
+    const client = createGitHubClient({ token: 't', fetch })
+    await expect(client.comment(repo, '../../../user' as unknown as number, 'x')).rejects.toThrow(RangeError)
+    await expect(client.get(repo, -1)).rejects.toThrow(RangeError)
+    expect(() => client.headRefspec(1.5)).toThrow(RangeError)
+    expect(calls).toEqual([])
+  })
+
   it('turns error responses into ProviderRequestError with the API message', async () => {
     const { fetch } = fakeFetch({})
     await expect(createGitHubClient({ token: 't', fetch }).get(repo, 99)).rejects.toEqual(new ProviderRequestError(404, 'Not Found'))

@@ -52,6 +52,7 @@ export const en: Messages = {
     from: 'From',
     existsRemote: 'Exists on the remote: a local branch tracking {branch} will be created.',
     existsLocal: 'Already exists locally: that branch will be opened.',
+    invalidBranch: "That name isn't a valid git branch.",
     creating: 'Creating…',
     open: 'Open session',
     create: 'Create session',
@@ -247,7 +248,10 @@ export const en: Messages = {
   },
   errors: {
     noTerminal: 'No terminal available for this host.',
+    invalidRequest: 'Mjolnir rejected an invalid request ({channel}).',
     unknownRepo: 'Unknown repository: {id}',
+    unknownWorktree: '{path} is not a worktree of this repository.',
+    worktreeDirty: '{name} has uncommitted changes.',
     unknownProfile: 'Unknown terminal profile: {id}',
     worktreeMissing: 'The worktree does not appear at {path}',
     unsupportedRemote: 'This repo’s remote does not match any supported provider.',

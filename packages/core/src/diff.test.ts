@@ -5,6 +5,7 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDiff, EMPTY_TREE, parseNameStatus, parseNumstat } from './diff'
 import { createHostExec } from './node'
+import { UnsafeRefError } from './refs'
 
 describe('parseNameStatus', () => {
   it('reads -z output including renames and copies', () => {
@@ -116,5 +117,16 @@ describe('createDiff between two refs', () => {
     expect(await diff.original(root, 'main', files[0]!)).toBe('one\n')
     expect(await diff.modified(root, 'feature', files[0]!)).toBe('two\n')
     rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('createDiff with refs coming from outside', () => {
+  it('refuses refs git would read as options before running anything', async () => {
+    const calls: string[][] = []
+    const diff = createDiff(async (_cwd, _file, args) => (calls.push(args), ''))
+    const change = { path: 'a.ts', status: 'modified', additions: 1, deletions: 0, binary: false } as const
+    await expect(diff.original('/repo', '--output=/tmp/pwned', change)).rejects.toThrow(UnsafeRefError)
+    await expect(diff.files('/repo', 'HEAD', '--upload-pack=evil')).rejects.toThrow(UnsafeRefError)
+    expect(calls).toEqual([])
   })
 })

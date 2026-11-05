@@ -27,6 +27,11 @@ export function hostPath(host: Host): PathApi {
   return host.kind === 'windows' ? path.win32 : path.posix
 }
 
+export function isInside(paths: PathApi, dir: string, target: string): boolean {
+  const relative = paths.relative(dir, paths.resolve(dir, target))
+  return relative !== '..' && !relative.startsWith(`..${paths.sep}`) && !paths.isAbsolute(relative)
+}
+
 export function createHostExec(host: Host, platform: NodeJS.Platform = process.platform): Exec {
   return (cwd, file, args) => {
     const command = buildHostCommand(platform, host, cwd, file, args)

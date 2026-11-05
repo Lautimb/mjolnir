@@ -1,10 +1,9 @@
 import { createRoot } from 'react-dom/client'
 import '@xterm/xterm/css/xterm.css'
-import './tokens.css'
-import './styles.css'
-import { App } from './App'
+import './index.css'
+import { App } from './app/App'
 import { I18nProvider } from './i18n/I18nProvider'
-import { useSettings } from './useSettings'
+import { useSettings } from './settings/useSettings'
 
 function Root() {
   const [settings, updateSettings] = useSettings()
