@@ -2,7 +2,7 @@
   "name": "@mjolnir/desktop",
   "productName": "Mjolnir",
   "description": "Workspace para agentes, terminales y worktrees",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Lautimb",
   "homepage": "https://github.com/Lautimb/mjolnir",
   "desktopName": "mjolnir.desktop",
