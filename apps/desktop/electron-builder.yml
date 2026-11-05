@@ -1,5 +1,6 @@
 appId: dev.mjolnir.app
 productName: Mjolnir
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
   output: release
 files:
@@ -8,14 +9,39 @@ files:
 asarUnpack:
   - node_modules/node-pty/**
 npmRebuild: false
+publish:
+  provider: github
+  owner: Lautimb
+  repo: mjolnir
+  releaseType: draft
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch: x64
   icon: resources/icon.ico
-linux:
-  icon: resources/icon.png
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  shortcutName: Mjolnir
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  icon: resources/icon.png
+  category: public.app-category.developer-tools
+  identity: '-'
+  hardenedRuntime: false
+linux:
+  target:
+    - target: AppImage
+      arch: x64
+    - target: deb
+      arch: x64
+  icon: resources/icon.png
+  executableName: mjolnir
+  syncDesktopName: true
+  category: Development
+  maintainer: Lautimb
 electronFuses:
   runAsNode: false
   enableCookieEncryption: true
