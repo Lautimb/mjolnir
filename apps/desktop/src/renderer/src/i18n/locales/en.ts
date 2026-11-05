@@ -270,6 +270,8 @@ export const en: Messages = {
       none: 'Asks for no permissions.',
       network: 'Connect to {origins}',
       networkAny: 'Connect to any site',
+      workspace: 'See the active repo and session',
+      repoFiles: 'Read and write {globs} in your repos',
     },
   },
   errors: {

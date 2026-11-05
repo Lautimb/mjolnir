@@ -1,14 +1,16 @@
 import { z } from 'zod'
-import type { HostMethod, HostMethods, HttpRequest, Json, ReplyMessage } from '@mjolnir/plugin-sdk'
+import type { HostMethod, HostMethods, HttpRequest, Json, ReplyMessage, SessionRef } from '@mjolnir/plugin-sdk'
 import type { PluginPermissions } from '@mjolnir/plugin-sdk/manifest'
 import type { PluginData } from './data'
 import { HostFailure } from './failure'
 import { performRequest, type Fetch } from './http'
+import { deleteRepoFile, listRepoFiles, readRepoFile, writeRepoFile } from './repo-files'
 
 export interface BrokerDeps {
   data: PluginData
   permissions(pluginId: string): PluginPermissions | null
   fetch(pluginId: string): Fetch
+  worktreeRoot(session: SessionRef): Promise<string>
   openExternal(url: string): void
 }
 
@@ -16,6 +18,10 @@ const key = z.string().min(1).max(200)
 const json: z.ZodType<Json> = z.json()
 const secret = z.string().max(16_000)
 const url = z.url({ protocol: /^https?$/ })
+
+const sessionRef: z.ZodType<SessionRef> = z.object({ repoId: z.string().min(1).max(200), worktree: z.string().min(1).max(4096) }).strict()
+const repoPath = z.string().max(1024)
+const fileContent = z.string()
 
 const httpRequest: z.ZodType<HttpRequest> = z
   .object({
@@ -41,6 +47,11 @@ const call = z.object({ id: z.number().int().nonnegative(), method: z.string().m
 
 function routes(deps: BrokerDeps): Routes {
   const store = (pluginId: string) => deps.data.for(pluginId)
+  const globs = (pluginId: string) => deps.permissions(pluginId)?.repoFiles
+  const root = (pluginId: string, session: SessionRef) => {
+    if (!globs(pluginId)?.length) throw new HostFailure('permissionDenied', 'repoFiles')
+    return deps.worktreeRoot(session)
+  }
   return {
     'storage.get': { params: z.tuple([key]), run: (id, name) => store(id).storage.get(name) },
     'storage.set': { params: z.tuple([key, json]), run: (id, name, value) => store(id).storage.set(name, value) },
@@ -53,6 +64,13 @@ function routes(deps: BrokerDeps): Routes {
       params: z.tuple([httpRequest]),
       run: (id, request) => performRequest(deps.fetch(id), deps.permissions(id)?.network, request),
     },
+    'repoFiles.list': { params: z.tuple([sessionRef, repoPath]), run: async (id, session, dir) => listRepoFiles(await root(id, session), dir, globs(id)) },
+    'repoFiles.read': { params: z.tuple([sessionRef, repoPath]), run: async (id, session, path) => readRepoFile(await root(id, session), path, globs(id)) },
+    'repoFiles.write': {
+      params: z.tuple([sessionRef, repoPath, fileContent]),
+      run: async (id, session, path, content) => writeRepoFile(await root(id, session), path, content, globs(id)),
+    },
+    'repoFiles.delete': { params: z.tuple([sessionRef, repoPath]), run: async (id, session, path) => deleteRepoFile(await root(id, session), path, globs(id)) },
     'ui.openExternal': { params: z.tuple([url]), run: (_id, target) => deps.openExternal(target) },
   }
 }

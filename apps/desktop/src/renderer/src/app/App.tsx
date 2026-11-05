@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
-import { readTheme, type NotifyKind, type PluginContext } from '@mjolnir/plugin-sdk'
+import { readTheme, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { appErrorCode } from '../../../shared/errors'
 import type { Settings } from '../../../shared/settings'
 import { useChangedFiles } from '../diff/useChangedFiles'
@@ -66,7 +66,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       })),
     [views, locale],
   )
-  const pluginContext = useMemo<PluginContext>(() => ({ locale, theme: readTheme(getComputedStyle(document.documentElement)) }), [locale])
+  const pluginContext = useMemo<Omit<PluginContext, 'session'>>(() => ({ locale, theme: readTheme(getComputedStyle(document.documentElement)) }), [locale])
   const notifyFromPlugin = useCallback((message: string, kind: NotifyKind) => setNotice(message, kind === 'error' ? 'danger' : 'info'), [setNotice])
 
   useEffect(() => {
@@ -82,6 +82,14 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
 
   const session = sessions.get(activeKey) ?? sessions.get(SCRATCH_KEY)!
   const changes = useChangedFiles(session)
+  const { repo: sessionRepo, worktree: sessionWorktree } = session
+  const pluginSession = useMemo<WorkspaceSession | null>(
+    () =>
+      sessionRepo && sessionWorktree
+        ? { repoId: sessionRepo.id, worktree: sessionWorktree.path, repoName: sessionRepo.name, branch: sessionWorktree.branch }
+        : null,
+    [sessionRepo, sessionWorktree],
+  )
   const sessionProfiles = session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
   const { tabs: sessionTabs, activeId: activeTabId } = terminals.forSession(session.key)
 
@@ -209,6 +217,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
             title={pluginText(entry.plugin, entry.view.title, locale)}
             active={view === entry.key}
             context={pluginContext}
+            session={pluginSession}
             onNotify={notifyFromPlugin}
           />
         ))}

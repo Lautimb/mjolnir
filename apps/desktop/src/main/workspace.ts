@@ -107,6 +107,11 @@ export class Workspace {
     return worktree
   }
 
+  async nativeWorktreePath(repoId: string, path: string): Promise<string> {
+    const worktree = await this.worktree(repoId, path)
+    return toNativePath(process.platform, this.repo(repoId).host, worktree.path)
+  }
+
   async compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff> {
     const { repo, diff } = this.open(repoId)
     await this.worktree(repoId, path)

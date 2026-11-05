@@ -269,6 +269,8 @@ export const es = {
       none: 'No pide permisos.',
       network: 'Conectarse a {origins}',
       networkAny: 'Conectarse a cualquier sitio',
+      workspace: 'Ver el repo y la sesión activos',
+      repoFiles: 'Leer y escribir {globs} en tus repos',
     },
   },
   errors: {

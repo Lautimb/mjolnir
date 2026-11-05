@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import type { NotifyKind, PluginContext, PluginMessage, ShellMessage } from '@mjolnir/plugin-sdk'
+import { useEffect, useMemo, useRef } from 'react'
+import { seesWorkspace, type NotifyKind, type PluginContext, type PluginMessage, type ShellMessage, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { MAIN_COLUMN } from '../app/layout'
 import { requestPort } from './connect'
 import { pluginOrigin, pluginUrl, type PluginView } from './model'
@@ -17,11 +17,15 @@ interface Props {
   entry: PluginView
   title: string
   active: boolean
-  context: PluginContext
+  context: Omit<PluginContext, 'session'>
+  session: WorkspaceSession | null
   onNotify(message: string, kind: NotifyKind): void
 }
 
-export function PluginFrame({ entry, title, active, context, onNotify }: Props) {
+export function PluginFrame({ entry, title, active, context: base, session, onNotify }: Props) {
+  const permissions = entry.plugin.manifest?.permissions
+  const visibleSession = permissions && seesWorkspace(permissions) ? session : null
+  const context = useMemo<PluginContext>(() => ({ ...base, session: visibleSession }), [base, visibleSession])
   const frame = useRef<HTMLIFrameElement>(null)
   const latestContext = useRef(context)
   const connected = useRef(false)

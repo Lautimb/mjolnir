@@ -6,7 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
-    "./base.css": "./src/base.css"
+    "./react": "./src/react/index.tsx",
+    "./base.css": "./src/base.css",
+    "./components.css": "./src/react/components.css"
   },
   "scripts": {
     "test": "vitest run",
@@ -16,7 +18,17 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

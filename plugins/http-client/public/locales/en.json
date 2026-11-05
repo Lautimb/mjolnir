@@ -1,0 +1,5 @@
+{
+  "name": "HTTP client",
+  "description": "Try APIs from Mjolnir, with per-repo collections, environments and history.",
+  "view": "HTTP client"
+}

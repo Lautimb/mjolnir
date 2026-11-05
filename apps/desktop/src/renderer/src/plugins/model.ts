@@ -41,8 +41,12 @@ export function pluginName(plugin: PluginInfo, locale: string): string {
 
 export function describePermissions(t: T, permissions: GrantablePermissions): string[] {
   const network = permissions.network ?? []
-  if (!network.length) return []
-  return [network.includes('*') ? t('plugins.permissions.networkAny') : t('plugins.permissions.network', { origins: network.join(', ') })]
+  const repoFiles = permissions.repoFiles ?? []
+  return [
+    ...(network.length ? [network.includes('*') ? t('plugins.permissions.networkAny') : t('plugins.permissions.network', { origins: network.join(', ') })] : []),
+    ...(permissions.workspace ? [t('plugins.permissions.workspace')] : []),
+    ...(repoFiles.length ? [t('plugins.permissions.repoFiles', { globs: repoFiles.join(', ') })] : []),
+  ]
 }
 
 export function touch(keys: PluginViewKey[], key: PluginViewKey, limit = MOUNTED_VIEWS): PluginViewKey[] {

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isOriginPattern } from './permissions'
+import { isRepoGlob } from './repo-paths'
 import { LOCALIZED } from './strings'
 
 export const MANIFEST_FILE = 'mjolnir-plugin.json'
@@ -51,6 +52,8 @@ export const manifestSchema = z
     permissions: z
       .object({
         network: z.array(z.string().refine(isOriginPattern, 'must be an origin like https://host or https://*.host, or *')).max(50).optional(),
+        workspace: z.literal('read').optional(),
+        repoFiles: z.array(z.string().refine(isRepoGlob, 'must be a glob relative to the repo, outside .git')).min(1).max(20).optional(),
       })
       .strict()
       .default({}),

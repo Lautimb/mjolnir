@@ -28,6 +28,22 @@ export interface HttpResponse {
   durationMs: number
 }
 
+export interface SessionRef {
+  repoId: string
+  worktree: string
+}
+
+export interface WorkspaceSession extends SessionRef {
+  repoName: string
+  branch: string | null
+}
+
+export interface RepoFileEntry {
+  path: string
+  size: number
+  modifiedMs: number
+}
+
 export interface HostMethods {
   'storage.get': { params: [key: string]; result: Json | null }
   'storage.set': { params: [key: string, value: Json]; result: void }
@@ -37,6 +53,10 @@ export interface HostMethods {
   'secrets.set': { params: [key: string, value: string]; result: void }
   'secrets.delete': { params: [key: string]; result: void }
   'http.request': { params: [request: HttpRequest]; result: HttpResponse }
+  'repoFiles.list': { params: [session: SessionRef, dir: string]; result: RepoFileEntry[] }
+  'repoFiles.read': { params: [session: SessionRef, path: string]; result: string | null }
+  'repoFiles.write': { params: [session: SessionRef, path: string, content: string]; result: void }
+  'repoFiles.delete': { params: [session: SessionRef, path: string]; result: void }
   'ui.openExternal': { params: [url: string]; result: void }
 }
 
@@ -60,6 +80,7 @@ export type ReplyMessage = { id: number; result: unknown } | { id: number; error
 export interface PluginContext {
   locale: string
   theme: Record<string, string>
+  session: WorkspaceSession | null
 }
 
 export type NotifyKind = 'info' | 'error'

@@ -18,7 +18,7 @@ import { Workspace } from './workspace'
 
 registerPluginScheme()
 
-function createPlugins(userData: string, onChange: () => void) {
+function createPlugins(userData: string, workspace: Workspace, onChange: () => void) {
   const registry = new PluginRegistry({ file: join(userData, 'plugins.json'), appVersion: app.getVersion(), watch: true, onChange })
   const data = new PluginData(join(userData, 'plugin-data'), {
     encrypt: (value) => {
@@ -31,6 +31,10 @@ function createPlugins(userData: string, onChange: () => void) {
     data,
     permissions: (pluginId) => registry.permissions(pluginId),
     fetch: (pluginId) => (url, init) => session.fromPartition(`plugin:${pluginId}`).fetch(url, init),
+    worktreeRoot: ({ repoId, worktree }) =>
+      workspace.nativeWorktreePath(repoId, worktree).catch(() => {
+        throw new HostFailure('invalidRequest', 'unknown session')
+      }),
     openExternal,
   })
   const ports = new PluginPorts(broker, (pluginId) => !!registry.permissions(pluginId))
@@ -50,7 +54,7 @@ void app.whenReady().then(async () => {
   const accounts = new Accounts(join(userData, 'accounts.json'), environment.repoHosts)
   const terminals = new PtyManager((channel, id, payload) => window.send(channel, id, payload))
   const window = new MainWindow(environment.appHost, () => terminals.killAll())
-  const plugins = createPlugins(userData, () => {
+  const plugins = createPlugins(userData, workspace, () => {
     plugins.ports.closeInactive()
     window.send('plugins:changed')
   })

@@ -5,20 +5,26 @@ import { describe, expect, it } from 'vitest'
 import { createBroker } from './broker'
 import { PluginData } from './data'
 
-function setup(active: Record<string, string[]> = { hello: ['https://api.io'] }) {
+function setup(active: Record<string, string[]> = { hello: ['https://api.io'] }, repoFiles: Record<string, string[]> = {}) {
   const data = new PluginData(mkdtempSync(join(tmpdir(), 'mjolnir-broker-')), { encrypt: (v) => v, decrypt: (v) => v })
   const opened: string[] = []
   const fetched: string[] = []
+  const resolved: string[] = []
+  const repo = mkdtempSync(join(tmpdir(), 'mjolnir-broker-repo-'))
   const broker = createBroker({
     data,
-    permissions: (id) => (active[id] ? { network: active[id] } : null),
+    permissions: (id) => (active[id] ? { network: active[id], repoFiles: repoFiles[id] } : null),
     fetch: (id) => async (url) => {
       fetched.push(`${id} ${url}`)
       return new Response('ok')
     },
+    worktreeRoot: async ({ repoId }) => {
+      resolved.push(repoId)
+      return repo
+    },
     openExternal: (url) => void opened.push(url),
   })
-  return { broker, opened, fetched }
+  return { broker, opened, fetched, resolved }
 }
 
 describe('createBroker', () => {
@@ -79,4 +85,18 @@ describe('createBroker', () => {
     expect(opened).toEqual(['https://dev.azure.com'])
   })
 
+  it('reads and writes repo files only inside the granted globs', async () => {
+    const { broker } = setup({ http: [] }, { http: ['.mjolnir/http/**'] })
+    const session = { repoId: 'r1', worktree: '/repo' }
+    expect(await broker('http', { id: 1, method: 'repoFiles.write', params: [session, '.mjolnir/http/a.json', '{}'] })).toEqual({ id: 1, result: null })
+    expect(await broker('http', { id: 2, method: 'repoFiles.read', params: [session, '.mjolnir/http/a.json'] })).toEqual({ id: 2, result: '{}' })
+    expect(await broker('http', { id: 3, method: 'repoFiles.write', params: [session, 'package.json', '{}'] })).toMatchObject({ error: { code: 'permissionDenied' } })
+  })
+
+  it('does not resolve sessions for plugins without repo access', async () => {
+    const { broker, resolved } = setup({ hello: [] })
+    const reply = await broker('hello', { id: 1, method: 'repoFiles.list', params: [{ repoId: 'r1', worktree: '/repo' }, ''] })
+    expect(reply).toMatchObject({ error: { code: 'permissionDenied' } })
+    expect(resolved).toEqual([])
+  })
 })

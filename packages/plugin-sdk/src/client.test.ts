@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createMjolnir, HostError } from './client'
-import type { CallMessage, PluginMessage, ReplyMessage } from './protocol'
+import type { CallMessage, PluginMessage, ReplyMessage, WorkspaceSession } from './protocol'
 
 function setup(reply: (call: CallMessage) => ReplyMessage) {
   const { port1: plugin, port2: host } = new MessageChannel()
@@ -11,7 +11,7 @@ function setup(reply: (call: CallMessage) => ReplyMessage) {
   })
   host.start()
   const posted: PluginMessage[] = []
-  const mjolnir = createMjolnir(plugin, { post: (message) => posted.push(message) }, { locale: 'es', theme: {} })
+  const mjolnir = createMjolnir(plugin, { post: (message) => posted.push(message) }, { locale: 'es', theme: {}, session: null })
   return { mjolnir, calls, posted, close: () => (plugin.close(), host.close()) }
 }
 
@@ -43,13 +43,21 @@ describe('createMjolnir', () => {
     close()
   })
 
+  it('sends only the session reference the host needs, not the whole session', async () => {
+    const { mjolnir, calls, close } = setup((call) => ({ id: call.id, result: null }))
+    const session: WorkspaceSession = { repoId: 'r1', worktree: '/repo', repoName: 'repo', branch: 'main' }
+    await mjolnir.repoFiles.read(session, '.mjolnir/http/a.json')
+    expect(calls[0]?.params).toEqual([{ repoId: 'r1', worktree: '/repo' }, '.mjolnir/http/a.json'])
+    close()
+  })
+
   it('tells listeners when the shell updates the context', () => {
     const { mjolnir, close } = setup((call) => ({ id: call.id, result: null }))
     const seen: string[] = []
     const off = mjolnir.onContextChange((context) => seen.push(context.locale))
-    mjolnir.updateContext({ locale: 'en', theme: {} })
+    mjolnir.updateContext({ locale: 'en', theme: {}, session: null })
     off()
-    mjolnir.updateContext({ locale: 'es', theme: {} })
+    mjolnir.updateContext({ locale: 'es', theme: {}, session: null })
     expect(seen).toEqual(['en'])
     expect(mjolnir.context.locale).toBe('es')
     close()

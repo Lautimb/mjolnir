@@ -113,20 +113,21 @@ La exporta `@mjolnir/plugin-sdk` como cliente tipado sobre el `MessagePort`:
 
 ```ts
 interface HostApi {
-  context: { get(): PluginContext; onChange(cb): Unsubscribe }   // locale y tema; repo y sesión activos con permissions.workspace
-  storage: { get(key); set(key, value); delete(key) }            // JSON por plugin, en <userData>/plugin-data/<id>.json
+  context: { get(): PluginContext; onChange(cb): Unsubscribe }   // locale y tema; sesión activa con workspace o repoFiles
+  storage: { get(key); set(key, value); delete(key); keys() }    // JSON por plugin, en <userData>/plugin-data/<id>/storage.json
   secrets: { get(key); set(key, value); delete(key) }            // safeStorage, namespaced por plugin
   http: { request(req: HttpRequest): Promise<HttpResponse> }     // desde main, sujeto a permissions.network
   accounts: { token(provider, host): Promise<string | null> }    // solo de los proveedores que el plugin declara
   workspace: { repos(); worktrees(repoId); branches(repoId) }    // permissions.workspace = "read"
-  repoFiles: { read(path); write(path, data); list(dir) }        // dentro de permissions.repoFiles
+  repoFiles: { list(session, dir); read(session, path); write(session, path, text); delete(session, path) }  // dentro de permissions.repoFiles
   ui: { notify(message, kind); openExternal(url); openView(viewId, params) }
 }
 ```
 
 - Cada método tiene su schema zod en main. Lo que no pasa el schema o el chequeo de permiso devuelve un `AppError` con código (`pluginPermissionDenied`, `invalidRequest`…), que el SDK expone tal cual.
 - `http.request` devuelve status, headers y body (texto o base64) más timings, que es lo que necesita el cliente HTTP para mostrar la respuesta.
-- `repoFiles` existe por las colecciones por repo del cliente HTTP (por ejemplo `.mjolnir/http/**`). Los paths se validan en core con la misma lógica que hoy usan los paths de worktree.
+- `repoFiles` existe por las colecciones por repo del cliente HTTP (por ejemplo `.mjolnir/http/**`). `session` es la que llega en el contexto (`repoId` + `worktree`); main verifica que el worktree exista en ese repo. Los paths son relativos, con `/`, y se validan en el SDK (`isSafeRepoPath`): nunca `.git` ni los nombres que Windows resuelve a `.git` (punto o espacio final, nombres cortos 8.3), porque escribir ahí es ejecutar código vía hooks. Main no sigue symlinks, escribe de forma atómica y limita el tamaño (5 MB por archivo, 5000 archivos por listado). `list` solo recorre las carpetas que pueden contener algo que matchee los globs: con `.mjolnir/http/**` no entra a `node_modules`.
+- Implementado hasta ahora (fase 2): `context`, `storage`, `secrets`, `http`, `repoFiles` y `ui.notify` / `ui.openExternal`. `accounts`, `workspace.*` y `ui.openView` llegan con las fases que los usan.
 
 **Versionado**: los tipos que cruzan la frontera (`RemoteRepo`, `PullRequest*`, `Account`) pasan a vivir en el SDK y core los reexporta. Cambiarlos de forma incompatible es subir `api` a 2; el host puede soportar 1 y 2 a la vez durante una transición.
 
@@ -135,7 +136,7 @@ interface HostApi {
 | Permiso | Valor | Se muestra como |
 | --- | --- | --- |
 | `network` | lista de orígenes, con comodín de subdominio; `["*"]` para todo | "Conectarse a dev.azure.com…" / "Conectarse a cualquier sitio" (resaltado) |
-| `workspace` | `"read"` | "Ver tus repos, sesiones y branches" |
+| `workspace` | `"read"` | "Ver el repo y la sesión activos" (y más adelante la lista de repos y branches) |
 | `repoFiles` | lista de globs relativos al repo | "Leer y escribir `.mjolnir/http/**` en tus repos" |
 | `accounts` | ids de proveedores de otros plugins o built-in | "Usar tu cuenta de GitHub" |
 
@@ -150,7 +151,7 @@ Siempre otorgados, sin preguntar: su propio storage, sus secretos, los tokens de
 ```
 <userData>/plugins/<id>/<version>/   archivos del plugin
 <userData>/plugins.json              id → versión activa, habilitado, permisos otorgados, origen, sha256
-<userData>/plugin-data/<id>.json     storage del plugin
+<userData>/plugin-data/<id>/         storage.json y secrets.json del plugin
 ```
 
 - **v1 — archivo local**: "Instalar desde archivo…" con un `.mjp`. Se calcula el sha256, se descomprime validando paths (sin `..`, sin symlinks, tamaño máximo) y se valida el manifest. Se marca como "no verificado".
@@ -161,6 +162,19 @@ Siempre otorgados, sin preguntar: su propio storage, sus secretos, los tokens de
 
 Decidido: viven en el monorepo (`plugins/http-client`, `plugins/azure-devops`) y se **instalan aparte**, no vienen con la app. Fuerza a que la API alcance de verdad y mantiene el instalador chico. La alternativa (bundleados pero desactivables) es más cómoda para colegas, pero esconde los huecos de la API.
 
+**Cliente HTTP** (`plugins/http-client`): cada request de la colección es un archivo en `.mjolnir/http/<carpeta>/<nombre>.json` del repo, para que se versione y se revise en PRs:
+
+```json
+{
+  "method": "POST",
+  "url": "{{base}}/users",
+  "headers": [{ "name": "Authorization", "value": "Bearer {{token}}" }],
+  "body": { "kind": "json", "text": "{\"name\":\"Ada\"}" }
+}
+```
+
+Los entornos (`{{variable}}`), el historial (últimos 50) y el borrador quedan en el storage del plugin, en la máquina y no en el repo, porque suelen tener tokens. Pide `network: ["*"]` y `repoFiles: [".mjolnir/http/**"]`.
+
 ### A decidir: dónde se publica
 
 El repo es privado, así que los releases no se pueden bajar sin acceso. El catálogo necesita un lugar público (repo de releases aparte o el mismo repo en público). Es la misma decisión que está abierta para los instaladores de la app; conviene tomarlas juntas.
@@ -168,7 +182,7 @@ El repo es privado, así que los releases no se pueden bajar sin acceso. El cat�
 ## UI de los plugins
 
 - El host le manda al iframe los valores de los tokens del tema (`THEME_TOKENS` del SDK: colores, tipografía, radios, sombras) leídos de `index.css`, y el SDK los aplica como variables CSS en el iframe. La fuente de verdad sigue siendo `index.css`, sin copia, y un cambio de tema llega solo. `@mjolnir/plugin-sdk/base.css` aplica fondo, tipografía y scrollbars con esas variables, así un plugin se ve nativo sin hacer nada.
-- Los componentes de `ui/` se exponen como paquete React opcional (`@mjolnir/plugin-sdk/react`). Cada plugin bundlea su propio React; con iframes no hay forma de compartir la instancia y tampoco hace falta.
+- `@mjolnir/plugin-sdk/react` (opcional, React como peer dependency) trae `MjolnirProvider`, `useMjolnir`, `useHostContext` y los componentes básicos de `ui/` (`Button`, `IconButton`, `TextInput`, `TextArea`, `Select`, `Field`, `Badge`, `Segmented`, `EmptyState`), con sus estilos en `@mjolnir/plugin-sdk/components.css` sobre las mismas variables del tema, sin Tailwind. Cada plugin bundlea su propio React; con iframes no hay forma de compartir la instancia y tampoco hace falta.
 - El host le pasa al iframe el tamaño disponible; el plugin no controla nada fuera de su área.
 
 ### Framework de UI
@@ -177,7 +191,7 @@ Decidido: no exigir React, pero que el template de plugin y los first-party lo u
 
 ## Desarrollar un plugin
 
-`plugins/hello` es el ejemplo y el template: usa storage, secretos, HTTP, notificaciones y sus propios locales, sin framework.
+`plugins/hello` es el ejemplo mínimo: usa storage, secretos, HTTP, notificaciones y sus propios locales, sin framework. `plugins/http-client` es el ejemplo con React y los componentes del SDK.
 
 ```sh
 pnpm --filter @mjolnir/plugin-hello dev   # vite build --watch → plugins/hello/dist
@@ -203,7 +217,7 @@ Los errores del host llegan como `HostError` con `code` (`permissionDenied`, `qu
 Cada fase es un PR con CI verde.
 
 1. **Base** ✅ — `packages/plugin-sdk` (tipos, schema del manifest, cliente, tokens del tema, base.css), `PluginRegistry` cargando carpetas en modo desarrollo con recarga al cambiar archivos, protocolo `mjolnir-plugin://`, broker con `storage`, `secrets`, `http` y `ui`, aprobación de permisos, vista de Plugins en el rail (listar, habilitar, deshabilitar, cargar carpeta, quitar) y contribución `views`. Plugin de ejemplo en `plugins/hello` que usa toda la API y sirve de template.
-2. **Cliente HTTP** — `plugins/http-client` (request, respuesta, historial, entornos) más `repoFiles` y `context` para las colecciones por repo. Valida la API de UI y de red. **∥** con la fase 3 una vez mergeada la 1.
+2. **Cliente HTTP** ✅ — `plugins/http-client` (request, respuesta, historial, entornos) más `repoFiles` y `context` para las colecciones por repo. Valida la API de UI y de red. **∥** con la fase 3 una vez mergeada la 1.
 3. **Proveedores** — registro de proveedores, `PluginProviderAdapter`, auth por CLI declarado, permiso `accounts`. Prueba con `plugins/azure-devops` (cuenta + PRs).
 4. **Instalación** — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
 5. **Catálogo y firma** — cuando esté decidido dónde se publica.

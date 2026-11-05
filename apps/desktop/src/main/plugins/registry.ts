@@ -1,7 +1,7 @@
 import { watch, type FSWatcher } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { API_VERSION, hasPermissions, missingPermissions, type GrantablePermissions } from '@mjolnir/plugin-sdk'
+import { API_VERSION, hasPermissions, mergePermissions, missingPermissions, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import {
   checkCompatibility,
   localizedKeys,
@@ -125,7 +125,7 @@ export class PluginRegistry {
 
   enable(pluginId: string, approved: GrantablePermissions): void {
     const plugin = this.require(pluginId)
-    const granted = { network: [...new Set([...(plugin.record.granted.network ?? []), ...(approved.network ?? [])])] }
+    const granted = mergePermissions(plugin.record.granted, approved)
     if (plugin.manifest && hasPermissions(missingPermissions(plugin.manifest.permissions, granted))) {
       throw new AppError('pluginPermissionsChanged', {})
     }

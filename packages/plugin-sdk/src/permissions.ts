@@ -30,13 +30,34 @@ export function allowsUrl(patterns: readonly string[] | undefined, url: string):
 
 export interface GrantablePermissions {
   network?: string[]
+  workspace?: 'read'
+  repoFiles?: string[]
 }
 
+const without = (requested: string[] | undefined, granted: string[] | undefined) => (requested ?? []).filter((entry) => !(granted ?? []).includes(entry))
+
 export function missingPermissions(requested: GrantablePermissions, granted: GrantablePermissions): GrantablePermissions {
-  const network = (requested.network ?? []).filter((pattern) => !(granted.network ?? []).includes(pattern))
-  return network.length ? { network } : {}
+  const network = without(requested.network, granted.network)
+  const repoFiles = without(requested.repoFiles, granted.repoFiles)
+  return {
+    ...(network.length > 0 && { network }),
+    ...(requested.workspace && !granted.workspace && { workspace: requested.workspace }),
+    ...(repoFiles.length > 0 && { repoFiles }),
+  }
+}
+
+export function mergePermissions(current: GrantablePermissions, approved: GrantablePermissions): GrantablePermissions {
+  const union = (a: string[] | undefined, b: string[] | undefined) => (a?.length || b?.length ? [...new Set([...(a ?? []), ...(b ?? [])])] : undefined)
+  const network = union(current.network, approved.network)
+  const repoFiles = union(current.repoFiles, approved.repoFiles)
+  const workspace = current.workspace ?? approved.workspace
+  return { ...(network && { network }), ...(workspace && { workspace }), ...(repoFiles && { repoFiles }) }
 }
 
 export function hasPermissions(permissions: GrantablePermissions): boolean {
-  return (permissions.network?.length ?? 0) > 0
+  return (permissions.network?.length ?? 0) > 0 || !!permissions.workspace || (permissions.repoFiles?.length ?? 0) > 0
+}
+
+export function seesWorkspace(permissions: GrantablePermissions): boolean {
+  return !!permissions.workspace || (permissions.repoFiles?.length ?? 0) > 0
 }

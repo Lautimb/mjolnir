@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowsUrl, matchesOrigin, missingPermissions } from './permissions'
+import { allowsUrl, matchesOrigin, mergePermissions, missingPermissions } from './permissions'
 
 describe('matchesOrigin', () => {
   it('matches the exact origin, ignoring path and query', () => {
@@ -38,4 +38,19 @@ describe('missingPermissions', () => {
     expect(missingPermissions({ network: ['https://a.io'] }, { network: ['https://a.io', 'https://b.io'] })).toEqual({})
   })
 
+  it('asks again for workspace access and new repo globs', () => {
+    expect(missingPermissions({ workspace: 'read', repoFiles: ['a/**', 'b/**'] }, { repoFiles: ['a/**'] })).toEqual({ workspace: 'read', repoFiles: ['b/**'] })
+    expect(missingPermissions({ workspace: 'read' }, { workspace: 'read' })).toEqual({})
+  })
+})
+
+describe('mergePermissions', () => {
+  it('keeps what was granted before and adds what was approved', () => {
+    expect(mergePermissions({ network: ['https://a.io'] }, { network: ['https://a.io', 'https://b.io'], workspace: 'read', repoFiles: ['x/**'] })).toEqual({
+      network: ['https://a.io', 'https://b.io'],
+      workspace: 'read',
+      repoFiles: ['x/**'],
+    })
+    expect(mergePermissions({}, {})).toEqual({})
+  })
 })

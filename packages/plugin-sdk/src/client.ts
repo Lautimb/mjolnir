@@ -9,7 +9,9 @@ import type {
   NotifyKind,
   PluginContext,
   PluginMessage,
+  RepoFileEntry,
   ReplyMessage,
+  SessionRef,
   ShellMessage,
 } from './protocol'
 import { applyTheme } from './theme'
@@ -41,6 +43,12 @@ export interface Mjolnir {
   http: {
     request(request: HttpRequest): Promise<HttpResponse>
   }
+  repoFiles: {
+    list(session: SessionRef, dir?: string): Promise<RepoFileEntry[]>
+    read(session: SessionRef, path: string): Promise<string | null>
+    write(session: SessionRef, path: string, content: string): Promise<void>
+    delete(session: SessionRef, path: string): Promise<void>
+  }
   ui: {
     notify(message: string, kind?: NotifyKind): void
     openExternal(url: string): Promise<void>
@@ -70,6 +78,8 @@ export function createCaller(port: MessagePort): Call {
       port.postMessage({ id, method, params } satisfies CallMessage)
     })
 }
+
+const ref = ({ repoId, worktree }: SessionRef): SessionRef => ({ repoId, worktree })
 
 export interface Shell {
   post(message: PluginMessage): void
@@ -105,6 +115,12 @@ export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginCo
     },
     http: {
       request: (request) => call('http.request', request),
+    },
+    repoFiles: {
+      list: (session, dir = '') => call('repoFiles.list', ref(session), dir),
+      read: (session, path) => call('repoFiles.read', ref(session), path),
+      write: (session, path, content) => call('repoFiles.write', ref(session), path, content),
+      delete: (session, path) => call('repoFiles.delete', ref(session), path),
     },
     ui: {
       notify: (message, kind = 'info') => shell.post({ type: 'mjolnir:notify', message, kind }),

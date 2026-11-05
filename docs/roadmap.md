@@ -41,7 +41,7 @@ apps/desktop          Electron
   src/renderer/src    React por feature: app, sessions, terminals, diff, pulls, settings, ui, i18n
 packages/core         dominio sin Electron: hosts, perfiles, git, branches, diff, refs, proveedores
 packages/plugin-sdk   API para plugins: manifest, protocolo, cliente, permisos, tema
-plugins/              plugins first-party (hello es el ejemplo)
+plugins/              plugins first-party (hello es el ejemplo mínimo, http-client el cliente HTTP)
 docs/                 este documento
 ```
 
@@ -78,7 +78,7 @@ Temas que se pueden trabajar en paralelo sin pisarse están marcados con **∥**
 
 Objetivo: que quien tenga la app instale funcionalidades a demanda sin actualizar Mjolnir.
 
-Diseño y fases en [`docs/plugins.md`](plugins.md). Fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker con storage/secretos/HTTP, vista de Plugins, `plugins/hello`) hecha. Sigue la fase 2 (cliente HTTP).
+Diseño y fases en [`docs/plugins.md`](plugins.md). Fase 1 (base: SDK, carga desde carpeta, protocolo aislado, broker con storage/secretos/HTTP, vista de Plugins, `plugins/hello`) y fase 2 (`plugins/http-client` con colecciones por repo, entornos e historial; `repoFiles`, sesión en el contexto y `@mjolnir/plugin-sdk/react`) hechas. Sigue la fase 3 (proveedores, con Azure DevOps).
 
 Lo que cubre el diseño:
 
@@ -97,7 +97,7 @@ Lo que cubre el diseño:
 ### 3. Más plugins
 
 - GitLab (cuenta + PRs/MRs). **∥**
-- Cliente HTTP tipo Postman (colecciones por repo, entornos, historial). **∥**
+- Cliente HTTP: hecho como plugin (`plugins/http-client`). Pendiente: variables secretas en los entornos, importar de Postman/OpenAPI, cancelar un request en curso.
 
 ### PRs v2 **∥**
 
