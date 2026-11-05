@@ -2,7 +2,7 @@ import {
   parseRemoteUrl,
   type CreatePullRequestInput,
   type FileChange,
-  type PullRequestFilter,
+  type PullRequestQuery,
   type PullRequestProvider,
   type RemoteRepo,
 } from '@mjolnir/core'
@@ -34,8 +34,8 @@ export class Pulls {
     }
   }
 
-  list(repoId: string, filter: PullRequestFilter) {
-    return this.call(repoId, (pulls, remote) => pulls.list(remote, filter))
+  list(repoId: string, query: PullRequestQuery) {
+    return this.call(repoId, (pulls, remote) => pulls.list(remote, query))
   }
 
   get(repoId: string, number: number) {

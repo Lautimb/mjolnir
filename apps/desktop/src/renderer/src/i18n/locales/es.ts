@@ -161,10 +161,16 @@ export const es = {
       review: 'Para revisar',
       all: 'Todos',
     },
+    stateLabel: 'Estado',
+    stateFilters: {
+      open: 'Abiertos',
+      closed: 'Cerrados',
+      all: 'Todos',
+    },
     empty: {
-      mine: 'No tenés pull requests abiertos.',
+      mine: 'No tenés pull requests con este estado.',
       review: 'No tenés pull requests para revisar.',
-      all: 'No hay pull requests abiertos.',
+      all: 'No hay pull requests con este estado.',
     },
     thisSession: 'Esta sesión',
     createFor: 'Crear PR para {branch}',

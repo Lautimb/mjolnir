@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { GitPullRequest, GitPullRequestCreate, RefreshCw } from 'lucide-react'
-import type { PullRequestFilter, PullRequestSummary } from '@mjolnir/core/browser'
+import type { PullRequestFilter, PullRequestStateFilter, PullRequestSummary } from '@mjolnir/core/browser'
 import type { PullRequestContext } from '../../../shared/api'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import { useRelativeTime } from '../i18n/useRelativeTime'
@@ -18,6 +18,8 @@ interface Props {
 type Selection = { kind: 'pull'; number: number } | { kind: 'create' } | null
 
 const FILTERS: PullRequestFilter[] = ['mine', 'review', 'all']
+
+const STATES: PullRequestStateFilter[] = ['open', 'closed', 'all']
 
 function PullRow({ pull, selected, onSelect }: { pull: PullRequestSummary; selected: boolean; onSelect(): void }) {
   const ago = useRelativeTime()
@@ -54,6 +56,7 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
   const branch = session.worktree?.branch ?? null
   const [context, setContext] = useState<PullRequestContext | null>(null)
   const [filter, setFilter] = useState<PullRequestFilter>('mine')
+  const [stateFilter, setStateFilter] = useState<PullRequestStateFilter>('open')
   const [pulls, setPulls] = useState<PullRequestSummary[] | null>(null)
   const [sessionPull, setSessionPull] = useState<PullRequestSummary | null | undefined>(undefined)
   const [selection, setSelection] = useState<Selection>(null)
@@ -67,13 +70,15 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
   }, [repoId])
 
   const connected = !!context?.account
+  const pendingReviewsOnly = filter === 'review'
+  const state = pendingReviewsOnly ? 'open' : stateFilter
 
   useEffect(() => {
     if (!repoId || !connected) return
     setPulls(null)
     setError(null)
-    window.mjolnir.pulls.list(repoId, filter).then(setPulls, setError)
-  }, [repoId, connected, filter, reload])
+    window.mjolnir.pulls.list(repoId, { filter, state }).then(setPulls, setError)
+  }, [repoId, connected, filter, state, reload])
 
   useEffect(() => {
     setSessionPull(undefined)
@@ -132,6 +137,15 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
             <RefreshCw size={14} />
           </button>
         </header>
+        {!pendingReviewsOnly && (
+          <div className="pulls-filters segmented" role="radiogroup" aria-label={t('pulls.stateLabel')}>
+            {STATES.map((option) => (
+              <button key={option} className={stateFilter === option ? 'selected' : undefined} onClick={() => setStateFilter(option)}>
+                {t(`pulls.stateFilters.${option}`)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {canOpenPull && sessionPull !== undefined && (
           <div className="pulls-session">

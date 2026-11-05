@@ -24,6 +24,13 @@ export type ChecksState = 'success' | 'failure' | 'pending'
 
 export type PullRequestFilter = 'mine' | 'review' | 'all'
 
+export type PullRequestStateFilter = 'open' | 'closed' | 'all'
+
+export interface PullRequestQuery {
+  filter: PullRequestFilter
+  state: PullRequestStateFilter
+}
+
 export interface PullRequestSummary {
   number: number
   title: string
@@ -71,7 +78,7 @@ export interface CreatePullRequestInput {
 }
 
 export interface PullRequestProvider {
-  list(repo: RemoteRepo, filter: PullRequestFilter): Promise<PullRequestSummary[]>
+  list(repo: RemoteRepo, query: PullRequestQuery): Promise<PullRequestSummary[]>
   get(repo: RemoteRepo, number: number): Promise<PullRequestDetail>
   forBranch(repo: RemoteRepo, branch: string): Promise<PullRequestSummary | null>
   comments(repo: RemoteRepo, number: number): Promise<PullRequestComment[]>

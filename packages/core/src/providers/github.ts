@@ -6,7 +6,7 @@ import type {
   ProviderDefinition,
   PullRequestComment,
   PullRequestDetail,
-  PullRequestFilter,
+  PullRequestQuery,
   PullRequestProvider,
   PullRequestReview,
   PullRequestSummary,
@@ -167,8 +167,8 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
   const login = () => (viewerLogin ??= viewer().then((user) => user.login))
 
   const provider: PullRequestProvider = {
-    async list(repo: RemoteRepo, filter: PullRequestFilter) {
-      const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=open&sort=updated&direction=desc&per_page=100`)
+    async list(repo: RemoteRepo, { filter, state }: PullRequestQuery) {
+      const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=${state}&sort=updated&direction=desc&per_page=100`)
       if (filter === 'all') return pulls.map(summary)
       const me = await login()
       return pulls

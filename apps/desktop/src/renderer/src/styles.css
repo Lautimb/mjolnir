@@ -890,6 +890,15 @@ button:disabled {
   height: 24px;
 }
 
+.pulls-filters {
+  align-self: flex-start;
+  margin: var(--space-2) var(--space-3);
+}
+
+.pulls-filters button {
+  height: 22px;
+}
+
 .diff-base {
   font-family: var(--font-mono);
   color: var(--color-text-muted);

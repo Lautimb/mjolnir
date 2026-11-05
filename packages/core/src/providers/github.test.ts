@@ -44,7 +44,7 @@ describe('github.matchRemote', () => {
 describe('createGitHubClient', () => {
   it('authenticates every request with the token and the versioned API headers', async () => {
     const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls?': [pull()] })
-    await createGitHubClient({ token: 'secret', fetch }).list(repo, 'all')
+    await createGitHubClient({ token: 'secret', fetch }).list(repo, { filter: 'all', state: 'open' })
     expect(calls[0]!.init.headers).toMatchObject({
       Authorization: 'Bearer secret',
       Accept: 'application/vnd.github+json',
@@ -62,14 +62,20 @@ describe('createGitHubClient', () => {
       ],
     })
     const client = createGitHubClient({ token: 't', fetch })
-    expect((await client.list(repo, 'mine')).map((pr) => pr.number)).toEqual([1])
-    expect((await client.list(repo, 'review')).map((pr) => pr.number)).toEqual([2])
-    expect((await client.list(repo, 'all')).map((pr) => pr.number)).toEqual([1, 2, 3])
+    expect((await client.list(repo, { filter: 'mine', state: 'open' })).map((pr) => pr.number)).toEqual([1])
+    expect((await client.list(repo, { filter: 'review', state: 'open' })).map((pr) => pr.number)).toEqual([2])
+    expect((await client.list(repo, { filter: 'all', state: 'open' })).map((pr) => pr.number)).toEqual([1, 2, 3])
+  })
+
+  it('asks GitHub for the requested state, since merged pull requests are only listed as closed', async () => {
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls?': [] })
+    await createGitHubClient({ token: 't', fetch }).list(repo, { filter: 'all', state: 'closed' })
+    expect(calls[0]!.url).toContain('state=closed')
   })
 
   it('reports merged pull requests as merged even though GitHub keeps their state as closed', async () => {
     const { fetch } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls?': [pull({ state: 'closed', merged_at: '2026-11-03T00:00:00Z' })] })
-    expect((await createGitHubClient({ token: 't', fetch }).list(repo, 'all'))[0]!.state).toBe('merged')
+    expect((await createGitHubClient({ token: 't', fetch }).list(repo, { filter: 'all', state: 'open' }))[0]!.state).toBe('merged')
   })
 
   it('builds the detail from the pull, its reviews and the checks of its head commit', async () => {

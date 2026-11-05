@@ -9,7 +9,7 @@ import type {
   Host,
   PullRequestComment,
   PullRequestDetail,
-  PullRequestFilter,
+  PullRequestQuery,
   PullRequestSummary,
   RemoteRepo,
   Repo,
@@ -103,7 +103,7 @@ export interface MjolnirApi {
   }
   pulls: {
     context(repoId: string): Promise<PullRequestContext>
-    list(repoId: string, filter: PullRequestFilter): Promise<PullRequestSummary[]>
+    list(repoId: string, query: PullRequestQuery): Promise<PullRequestSummary[]>
     get(repoId: string, number: number): Promise<PullRequestDetail>
     forBranch(repoId: string, branch: string): Promise<PullRequestSummary | null>
     comments(repoId: string, number: number): Promise<PullRequestComment[]>

@@ -162,10 +162,16 @@ export const en: Messages = {
       review: 'To review',
       all: 'All',
     },
+    stateLabel: 'State',
+    stateFilters: {
+      open: 'Open',
+      closed: 'Closed',
+      all: 'All',
+    },
     empty: {
-      mine: 'You have no open pull requests.',
+      mine: 'You have no pull requests in this state.',
       review: 'You have no pull requests to review.',
-      all: 'There are no open pull requests.',
+      all: 'There are no pull requests in this state.',
     },
     thisSession: 'This session',
     createFor: 'Create PR for {branch}',

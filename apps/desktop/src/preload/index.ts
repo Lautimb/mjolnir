@@ -57,7 +57,7 @@ const api: MjolnirApi = {
   },
   pulls: {
     context: (repoId) => ipcRenderer.invoke('pulls:context', repoId),
-    list: (repoId, filter) => ipcRenderer.invoke('pulls:list', repoId, filter),
+    list: (repoId, query) => ipcRenderer.invoke('pulls:list', repoId, query),
     get: (repoId, number) => ipcRenderer.invoke('pulls:get', repoId, number),
     forBranch: (repoId, branch) => ipcRenderer.invoke('pulls:forBranch', repoId, branch),
     comments: (repoId, number) => ipcRenderer.invoke('pulls:comments', repoId, number),
