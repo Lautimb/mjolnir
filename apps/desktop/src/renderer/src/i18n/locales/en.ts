@@ -238,6 +238,12 @@ export const en: Messages = {
       block: 'Block',
       underline: 'Underline',
     },
+    fontSize: {
+      title: 'Font size',
+      description: 'Size of the text in terminals. Also with Ctrl and + or −, or Ctrl and the mouse wheel (⌘ on macOS); Ctrl 0 goes back to {size}.',
+      decrease: 'Smaller',
+      increase: 'Larger',
+    },
     cursorBlink: {
       title: 'Cursor blinking',
       description: 'The cursor blinks while the terminal has focus.',

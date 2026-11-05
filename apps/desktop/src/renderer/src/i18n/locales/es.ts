@@ -237,6 +237,12 @@ export const es = {
       block: 'Bloque',
       underline: 'Subrayado',
     },
+    fontSize: {
+      title: 'Tamaño de letra',
+      description: 'Tamaño del texto en las terminales. También con Ctrl y + o −, o Ctrl y la rueda del mouse (⌘ en macOS); Ctrl 0 vuelve a {size}.',
+      decrease: 'Achicar',
+      increase: 'Agrandar',
+    },
     cursorBlink: {
       title: 'Parpadeo del cursor',
       description: 'El cursor parpadea mientras la terminal tiene foco.',

@@ -5,6 +5,7 @@ export interface Settings {
   panelPosition: 'left' | 'right'
   terminalCursorStyle: 'block' | 'bar' | 'underline'
   terminalCursorBlink: boolean
+  terminalFontSize: number
   diffSideBySide: boolean
   hiddenPluginViews: string[]
 }
@@ -14,8 +15,11 @@ export const DEFAULT_SETTINGS: Settings = {
   panelPosition: 'left',
   terminalCursorStyle: 'bar',
   terminalCursorBlink: true,
+  terminalFontSize: 13,
   diffSideBySide: true,
   hiddenPluginViews: [],
 }
+
+export const TERMINAL_FONT_SIZE = { min: 8, max: 32, default: DEFAULT_SETTINGS.terminalFontSize }
 
 export const TITLEBAR_HEIGHT = 36

@@ -3,7 +3,7 @@ import { isSafeRef, type CreatePullRequestInput, type FileChange, type Host, typ
 import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
-import type { Settings } from '../shared/settings'
+import { TERMINAL_FONT_SIZE, type Settings } from '../shared/settings'
 
 const MAX_PATH = 4096
 
@@ -64,6 +64,7 @@ export const settings = z.object({
   panelPosition: z.enum(['left', 'right']),
   terminalCursorStyle: z.enum(['block', 'bar', 'underline']),
   terminalCursorBlink: z.boolean(),
+  terminalFontSize: z.number().int().min(TERMINAL_FONT_SIZE.min).max(TERMINAL_FONT_SIZE.max),
   diffSideBySide: z.boolean(),
   hiddenPluginViews: z.array(z.string().max(300)).max(1000),
 }) satisfies z.ZodType<Settings>
