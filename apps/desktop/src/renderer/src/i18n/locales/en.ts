@@ -80,6 +80,8 @@ export const en: Messages = {
   },
   launchpad: {
     terminal: 'Terminal',
+    continue: 'Continue latest',
+    newConversation: 'New',
   },
   agents: {
     claude: 'Anthropic’s agent',

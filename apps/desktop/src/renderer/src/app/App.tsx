@@ -18,7 +18,7 @@ import { useWorkspace } from '../sessions/useWorkspace'
 import { SettingsView } from '../settings/SettingsView'
 import type { UpdateSettings } from '../settings/useSettings'
 import { Launchpad } from '../terminals/Launchpad'
-import type { Agent } from '../terminals/model'
+import { agentLaunch, type Agent } from '../terminals/model'
 import { TabBar } from '../terminals/TabBar'
 import { TerminalView } from '../terminals/TerminalView'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
@@ -54,9 +54,21 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const [mountedViews, setMountedViews] = useState<PluginViewKey[]>([])
   const [sessionDraft, setSessionDraft] = useState<SessionDraft | null>(null)
 
+  const { restore: restoreTabs, close: closeTabs, wake: wakeTab } = terminals
   useEffect(() => {
-    void window.mjolnir.profiles.list().then(setProfiles)
-  }, [])
+    void Promise.all([window.mjolnir.profiles.list(), window.mjolnir.tabs.load()]).then(([list, saved]) => {
+      setProfiles(list)
+      restoreTabs(saved, list)
+    })
+  }, [restoreTabs])
+
+  useEffect(() => {
+    closeTabs((tab) => {
+      const repo = repos.find((candidate) => tab.sessionKey.startsWith(repoKeyPrefix(candidate)))
+      const list = repo && worktrees[repo.id]
+      return !!list && !list.some((worktree) => sessionKey(repo, worktree) === tab.sessionKey)
+    })
+  }, [repos, worktrees, terminals.tabs, closeTabs])
 
   const views = useMemo(() => pluginViews(plugins), [plugins])
   const railViews = useMemo<RailPluginView[]>(
@@ -97,14 +109,26 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   )
   const sessionProfiles = session.key === SCRATCH_KEY ? profiles : profiles.filter((profile) => sameHost(profile.host, session.host))
   const { tabs: sessionTabs, activeId: activeTabId } = terminals.forSession(session.key)
+  const activeTab = sessionTabs.find((tab) => tab.id === activeTabId)
+
+  useEffect(() => {
+    if (view === 'sessions' && activeTab?.dormant) wakeTab(activeTab.id)
+  }, [view, activeTab, wakeTab])
 
   const openShell = (profile: TerminalProfile) =>
     terminals.open(session.key, { profile, label: profile.label, kind: 'shell', cwd: session.cwd })
 
-  const openAgent = (agent: Agent) => {
+  const openAgent = (agent: Agent, resume = false) => {
     const profile = sessionProfiles[0]
     if (!profile) return setNotice(t('errors.noTerminal'))
-    terminals.open(session.key, { profile, label: agent.label, kind: 'agent', cwd: session.cwd, initialInput: `${agent.command}\r` })
+    terminals.open(session.key, {
+      profile,
+      label: agent.label,
+      kind: 'agent',
+      agent: agent.id,
+      cwd: session.cwd,
+      ...agentLaunch(agent, { mode: resume ? 'latest' : 'new' }, () => crypto.randomUUID()),
+    })
   }
 
   const addRepo = async (request: () => Promise<Repo | null>) => {
@@ -190,20 +214,22 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
           onActivate={(id) => terminals.activate(session.key, id)}
           onClose={(id) => terminals.close((tab) => tab.id === id)}
           onOpenShell={openShell}
-          onOpenAgent={openAgent}
+          onOpenAgent={(agent) => openAgent(agent)}
         />
         <div className="relative min-h-0 flex-1">
-          {terminals.tabs.map((tab) => (
-            <TerminalView
-              key={tab.id}
-              tab={tab}
-              cursorStyle={settings.terminalCursorStyle}
-              cursorBlink={settings.terminalCursorBlink}
-              fontSize={settings.terminalFontSize}
-              active={view === 'sessions' && tab.sessionKey === session.key && tab.id === activeTabId}
-              onExit={(code) => terminals.markExited(tab.id, code)}
-            />
-          ))}
+          {terminals.tabs
+            .filter((tab) => !tab.dormant)
+            .map((tab) => (
+              <TerminalView
+                key={tab.id}
+                tab={tab}
+                cursorStyle={settings.terminalCursorStyle}
+                cursorBlink={settings.terminalCursorBlink}
+                fontSize={settings.terminalFontSize}
+                active={view === 'sessions' && tab.sessionKey === session.key && tab.id === activeTabId}
+                onExit={(code) => terminals.markExited(tab.id, code)}
+              />
+            ))}
           {sessionTabs.length === 0 && (
             <Launchpad session={session} defaultProfile={sessionProfiles[0]} onOpenShell={openShell} onOpenAgent={openAgent} />
           )}

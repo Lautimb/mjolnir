@@ -15,6 +15,11 @@ export function sessionKey(repo: Repo, worktree: Worktree): string {
   return `${repo.id}::${worktree.path}`
 }
 
+export function sessionCwd(key: string): string | undefined {
+  const separator = key.indexOf('::')
+  return separator === -1 ? undefined : key.slice(separator + 2)
+}
+
 export function repoKeyPrefix(repo: Repo): string {
   return `${repo.id}::`
 }
