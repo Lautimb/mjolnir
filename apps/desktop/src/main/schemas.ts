@@ -4,6 +4,7 @@ import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir
 import type { SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
 import { TERMINAL_FONT_SIZE, type Settings } from '../shared/settings'
+import { ZOOM_LEVELS } from '../shared/zoom'
 
 const MAX_PATH = 4096
 
@@ -62,6 +63,7 @@ export const terminalInput = z.string().max(1_000_000)
 export const settings = z.object({
   language: z.enum(['system', ...LOCALE_IDS]),
   panelPosition: z.enum(['left', 'right']),
+  zoom: z.number().min(ZOOM_LEVELS[0]).max(ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!),
   terminalCursorStyle: z.enum(['block', 'bar', 'underline']),
   terminalCursorBlink: z.boolean(),
   terminalFontSize: z.number().int().min(TERMINAL_FONT_SIZE.min).max(TERMINAL_FONT_SIZE.max),

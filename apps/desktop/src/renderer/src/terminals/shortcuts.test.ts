@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { terminalShortcut, zoomed } from './shortcuts'
+import { stepFontSize, terminalShortcut } from './shortcuts'
 
 const keys = (key: string, modifiers: { ctrl?: boolean; meta?: boolean; shift?: boolean; alt?: boolean } = {}) => ({
   key,
@@ -25,21 +25,12 @@ describe('terminalShortcut', () => {
     expect(terminalShortcut(keys('v', { meta: true }), 'darwin', false)).toBeNull()
     expect(terminalShortcut(keys('c', { ctrl: true }), 'darwin', true)).toBeNull()
   })
-
-  it('zooms with Ctrl (Cmd on macOS) and the +, - and 0 keys of any layout', () => {
-    expect(terminalShortcut(keys('=', { ctrl: true }), 'win32', false)).toBe('zoomIn')
-    expect(terminalShortcut(keys('+', { ctrl: true, shift: true }), 'linux', false)).toBe('zoomIn')
-    expect(terminalShortcut(keys('-', { meta: true }), 'darwin', false)).toBe('zoomOut')
-    expect(terminalShortcut(keys('0', { ctrl: true }), 'win32', false)).toBe('zoomReset')
-    expect(terminalShortcut(keys('-', { ctrl: true, alt: true }), 'win32', false)).toBeNull()
-  })
 })
 
-describe('zoomed', () => {
-  it('stays within the supported sizes and resets to the default', () => {
-    expect(zoomed(13, 'zoomIn')).toBe(14)
-    expect(zoomed(32, 'zoomIn')).toBe(32)
-    expect(zoomed(8, 'zoomOut')).toBe(8)
-    expect(zoomed(20, 'zoomReset')).toBe(13)
+describe('stepFontSize', () => {
+  it('stays within the supported sizes', () => {
+    expect(stepFontSize(13, 1)).toBe(14)
+    expect(stepFontSize(32, 1)).toBe(32)
+    expect(stepFontSize(8, -1)).toBe(8)
   })
 })

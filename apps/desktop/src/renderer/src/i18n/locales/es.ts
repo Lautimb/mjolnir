@@ -224,6 +224,13 @@ export const es = {
       description: 'Idioma de la interfaz. "Del sistema" sigue la configuración de tu sistema operativo.',
       system: 'Del sistema',
     },
+    zoom: {
+      title: 'Zoom',
+      description: 'Tamaño de toda la app. También con Ctrl y + o −, o Ctrl y la rueda del mouse (⌘ en macOS); Ctrl 0 vuelve al 100%.',
+      in: 'Acercar',
+      out: 'Alejar',
+      reset: 'Volver al 100%',
+    },
     panelPosition: {
       title: 'Posición del panel',
       description: 'Lado de la ventana donde van el panel de sesiones y la barra de vistas.',
@@ -239,7 +246,7 @@ export const es = {
     },
     fontSize: {
       title: 'Tamaño de letra',
-      description: 'Tamaño del texto en las terminales. También con Ctrl y + o −, o Ctrl y la rueda del mouse (⌘ en macOS); Ctrl 0 vuelve a {size}.',
+      description: 'Tamaño del texto en las terminales, aparte del zoom de la app. Por defecto, {size}.',
       decrease: 'Achicar',
       increase: 'Agrandar',
     },

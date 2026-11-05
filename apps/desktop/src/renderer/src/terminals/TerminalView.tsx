@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import type { Settings } from '../../../shared/settings'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import type { Tab } from './model'
-import { terminalShortcut, zoomed } from './shortcuts'
+import { terminalShortcut } from './shortcuts'
 
 interface Props {
   tab: Tab
@@ -13,7 +13,6 @@ interface Props {
   cursorStyle: Settings['terminalCursorStyle']
   cursorBlink: boolean
   fontSize: number
-  onFontSizeChange(fontSize: number): void
   onExit(exitCode: number): void
 }
 
@@ -27,7 +26,7 @@ const theme = {
   brightBlack: '#5f616c',
 }
 
-export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, onFontSizeChange, onExit }: Props) {
+export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, onExit }: Props) {
   const { t } = useI18n()
   const describe = useRef((error: unknown) => describeError(t, error))
   const containerRef = useRef<HTMLDivElement>(null)
@@ -35,8 +34,6 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, 
   const fitRef = useRef<FitAddon | null>(null)
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
-  const zoomRef = useRef({ fontSize, onFontSizeChange })
-  zoomRef.current = { fontSize, onFontSizeChange }
 
   useEffect(() => {
     const container = containerRef.current!
@@ -65,18 +62,8 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, 
       if (!shortcut) return true
       if (shortcut === 'paste') return false
       event.preventDefault()
-      if (shortcut === 'copy') {
-        void navigator.clipboard.writeText(term.getSelection())
-        term.clearSelection()
-      } else {
-        zoomRef.current.onFontSizeChange(zoomed(zoomRef.current.fontSize, shortcut))
-      }
-      return false
-    })
-    term.attachCustomWheelEventHandler((event) => {
-      if (!(window.mjolnir.platform === 'darwin' ? event.metaKey : event.ctrlKey) || !event.deltaY) return true
-      event.preventDefault()
-      zoomRef.current.onFontSizeChange(zoomed(zoomRef.current.fontSize, event.deltaY < 0 ? 'zoomIn' : 'zoomOut'))
+      void navigator.clipboard.writeText(term.getSelection())
+      term.clearSelection()
       return false
     })
 

@@ -3,6 +3,7 @@ import { BrowserWindow, type BrowserWindowConstructorOptions } from 'electron'
 import type { Host } from '@mjolnir/core'
 import icon from '../../resources/icon.png?asset'
 import { TITLEBAR_HEIGHT } from '../shared/settings'
+import { zoomShortcut, type ZoomDirection } from '../shared/zoom'
 import { rendererEntry } from './security'
 
 function chrome(): BrowserWindowConstructorOptions {
@@ -17,11 +18,17 @@ function chrome(): BrowserWindowConstructorOptions {
   return { frame: false, icon }
 }
 
+export interface WindowZoom {
+  current(): number
+  change(direction: ZoomDirection): void
+}
+
 export class MainWindow {
   private window: BrowserWindow | null = null
 
   constructor(
     private readonly appHost: Host,
+    private readonly zoom: WindowZoom,
     private readonly onClosed: () => void,
   ) {}
 
@@ -50,6 +57,15 @@ export class MainWindow {
       },
     })
 
+    window.webContents.on('did-finish-load', () => window.webContents.setZoomFactor(this.zoom.current()))
+    window.webContents.on('before-input-event', (event, input) => {
+      const direction = zoomShortcut(input, process.platform)
+      if (!direction) return
+      event.preventDefault()
+      this.zoom.change(direction)
+    })
+    window.webContents.on('zoom-changed', (_event, direction) => this.zoom.change(direction))
+
     const sendMaximized = () => this.send('window:maximized', window.isMaximized())
     window.on('maximize', sendMaximized)
     window.on('unmaximize', sendMaximized)
@@ -65,6 +81,10 @@ export class MainWindow {
 
   send(channel: string, ...args: unknown[]): void {
     this.current?.webContents.send(channel, ...args)
+  }
+
+  setZoom(factor: number): void {
+    this.current?.webContents.setZoomFactor(factor)
   }
 
   minimize(): void {

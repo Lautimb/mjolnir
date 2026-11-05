@@ -225,6 +225,13 @@ export const en: Messages = {
       description: 'Interface language. "System" follows your operating system settings.',
       system: 'System',
     },
+    zoom: {
+      title: 'Zoom',
+      description: 'Size of the whole app. Also with Ctrl and + or −, or Ctrl and the mouse wheel (⌘ on macOS); Ctrl 0 goes back to 100%.',
+      in: 'Zoom in',
+      out: 'Zoom out',
+      reset: 'Back to 100%',
+    },
     panelPosition: {
       title: 'Panel position',
       description: 'Side of the window for the sessions panel and the views bar.',
@@ -240,7 +247,7 @@ export const en: Messages = {
     },
     fontSize: {
       title: 'Font size',
-      description: 'Size of the text in terminals. Also with Ctrl and + or −, or Ctrl and the mouse wheel (⌘ on macOS); Ctrl 0 goes back to {size}.',
+      description: 'Size of the text in terminals, separate from the app zoom. {size} by default.',
       decrease: 'Smaller',
       increase: 'Larger',
     },

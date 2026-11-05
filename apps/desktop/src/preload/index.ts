@@ -26,6 +26,7 @@ const api: MjolnirApi = {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (patch) => ipcRenderer.invoke('settings:update', patch),
+    onChange: (listener) => subscribe('settings:changed', listener),
   },
   profiles: {
     list: () => ipcRenderer.invoke('profiles:list'),

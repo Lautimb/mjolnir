@@ -113,6 +113,7 @@ export interface MjolnirApi {
   settings: {
     get(): Promise<Settings>
     update(patch: Partial<Settings>): Promise<Settings>
+    onChange(listener: (settings: Settings) => void): () => void
   }
   profiles: {
     list(): Promise<TerminalProfile[]>

@@ -8,6 +8,7 @@ export function useSettings(): [Settings | null, UpdateSettings] {
 
   useEffect(() => {
     void window.mjolnir.settings.get().then(setSettings)
+    return window.mjolnir.settings.onChange(setSettings)
   }, [])
 
   const update = useCallback<UpdateSettings>((patch) => {

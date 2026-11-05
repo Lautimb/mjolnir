@@ -196,7 +196,6 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
               cursorStyle={settings.terminalCursorStyle}
               cursorBlink={settings.terminalCursorBlink}
               fontSize={settings.terminalFontSize}
-              onFontSizeChange={(terminalFontSize) => updateSettings({ terminalFontSize })}
               active={view === 'sessions' && tab.sessionKey === session.key && tab.id === activeTabId}
               onExit={(code) => terminals.markExited(tab.id, code)}
             />

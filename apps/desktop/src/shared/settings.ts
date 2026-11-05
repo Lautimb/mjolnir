@@ -3,6 +3,7 @@ import type { LanguagePreference } from './locales'
 export interface Settings {
   language: LanguagePreference
   panelPosition: 'left' | 'right'
+  zoom: number
   terminalCursorStyle: 'block' | 'bar' | 'underline'
   terminalCursorBlink: boolean
   terminalFontSize: number
@@ -13,6 +14,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   language: 'system',
   panelPosition: 'left',
+  zoom: 1,
   terminalCursorStyle: 'bar',
   terminalCursorBlink: true,
   terminalFontSize: 13,
