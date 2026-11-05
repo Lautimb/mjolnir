@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CatalogPlugin, PluginInfo } from '../../../shared/api'
-import { catalogUpdate, pluginText, pluginViews, touch } from './model'
+import { asNewSession, catalogUpdate, pluginText, pluginViews, touch } from './model'
 
 const plugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
   id: 'hello',
@@ -71,5 +71,18 @@ describe('catalogUpdate', () => {
     expect(catalogUpdate(packaged('0.1.0', '0.2.0'), available('0.2.0'))).toBeNull()
     expect(catalogUpdate(packaged('0.1.0', '0.2.0'), available('0.3.0'))?.version).toBe('0.3.0')
     expect(catalogUpdate(plugin(), available('9.0.0'))).toBeNull()
+  })
+})
+
+describe('asNewSession', () => {
+  it('keeps only the repo and the branch, trimmed', () => {
+    expect(asNewSession({ type: 'mjolnir:newSession', repoId: 'r1', branch: ' feat/42-login ', extra: true })).toEqual({ repoId: 'r1', branch: 'feat/42-login' })
+  })
+
+  it('ignores other messages and malformed requests', () => {
+    expect(asNewSession({ type: 'mjolnir:notify', message: 'x' })).toBeNull()
+    expect(asNewSession({ type: 'mjolnir:newSession', repoId: 'r1' })).toBeNull()
+    expect(asNewSession({ type: 'mjolnir:newSession', repoId: '', branch: 'b' })).toBeNull()
+    expect(asNewSession(null)).toBeNull()
   })
 })

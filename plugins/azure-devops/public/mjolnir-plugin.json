@@ -1,12 +1,13 @@
 {
   "id": "azure-devops",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "engines": { "mjolnir": ">=0.1.0", "api": 1 },
   "name": "Azure DevOps",
   "description": "%description%",
   "locales": { "es": "locales/es.json", "en": "locales/en.json" },
   "background": "background.html",
   "contributes": {
+    "views": [{ "id": "boards", "title": "%boards%", "icon": "icons/boards.svg", "entry": "boards.html" }],
     "providers": [
       {
         "id": "azure-devops",
@@ -31,6 +32,7 @@
     ]
   },
   "permissions": {
-    "network": ["https://dev.azure.com", "https://app.vssps.visualstudio.com"]
+    "network": ["https://dev.azure.com", "https://app.vssps.visualstudio.com"],
+    "workspace": "read"
   }
 }

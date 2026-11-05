@@ -1,8 +1,6 @@
 import {
   HostError,
   type CreatePullRequestInput,
-  type HttpRequest,
-  type HttpResponse,
   type Person,
   type ProviderCredential,
   type ProviderIdentity,
@@ -16,12 +14,10 @@ import {
   type RemoteRepo,
   type ReviewDecision,
 } from '@mjolnir/plugin-sdk'
+import { API_VERSION, createCall, segment, type Request } from './api'
 
-export const API_VERSION = '7.1'
 const PROFILE_URL = 'https://app.vssps.visualstudio.com/_apis/profile/profiles/me'
 const PAGE_SIZE = 100
-
-export type Request = (request: HttpRequest) => Promise<HttpResponse>
 
 interface IdentityRef {
   id?: string
@@ -76,8 +72,6 @@ export function azureRepo(repo: RemoteRepo): AzureRepo {
   return { org, project, name: repo.name }
 }
 
-const segment = encodeURIComponent
-
 export function repoUrl({ org, project, name }: AzureRepo): string {
   return `https://dev.azure.com/${segment(org)}/${segment(project)}/_git/${segment(name)}`
 }
@@ -85,10 +79,6 @@ export function repoUrl({ org, project, name }: AzureRepo): string {
 function apiUrl({ org, project, name }: AzureRepo, path: string, query: Record<string, string> = {}): string {
   const params = new URLSearchParams({ ...query, 'api-version': API_VERSION })
   return `https://dev.azure.com/${segment(org)}/${segment(project)}/_apis/git/repositories/${segment(name)}/${path}?${params}`
-}
-
-export function authorization({ token, source }: ProviderCredential): string {
-  return source === 'cli' ? `Bearer ${token}` : `Basic ${btoa(`:${token}`)}`
 }
 
 const branch = (ref: string) => ref.replace(/^refs\/heads\//, '')
@@ -163,27 +153,7 @@ const STATUS_FILTER: Record<PullRequestQuery['state'], string> = { open: 'active
 export function createAzureProvider(request: Request): ProviderImplementation {
   const users = new Map<string, Promise<string>>()
 
-  const call = async <T>(credential: ProviderCredential, method: string, url: string, body?: unknown): Promise<T> => {
-    const response = await request({
-      method,
-      url,
-      headers: { Authorization: authorization(credential), Accept: 'application/json', ...(body !== undefined && { 'Content-Type': 'application/json' }) },
-      ...(body !== undefined && { body: { encoding: 'utf8', data: JSON.stringify(body) } }),
-      followRedirects: false,
-    })
-    if (response.status === 401 || response.status === 203 || (response.status >= 300 && response.status < 400)) {
-      throw new HostError('unauthorized', `Azure DevOps rejected the credentials (${response.status})`)
-    }
-    let parsed: unknown = null
-    try {
-      parsed = response.body.encoding === 'utf8' && response.body.data ? JSON.parse(response.body.data) : null
-    } catch {}
-    if (response.status >= 400) {
-      const message = (parsed as { message?: string } | null)?.message ?? response.statusText
-      throw new HostError('requestFailed', `${response.status}: ${message}`)
-    }
-    return parsed as T
-  }
+  const call = createCall(request)
 
   const me = (credential: ProviderCredential, repo: AzureRepo) => {
     const key = `${repo.org}|${credential.token}`

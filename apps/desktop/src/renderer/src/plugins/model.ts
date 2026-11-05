@@ -1,4 +1,4 @@
-import { compareVersions, localize, PLUGIN_SCHEME, type GrantablePermissions } from '@mjolnir/plugin-sdk'
+import { compareVersions, localize, PLUGIN_SCHEME, type GrantablePermissions, type NewSessionRequest } from '@mjolnir/plugin-sdk'
 import type { PluginManifest, ViewContribution } from '@mjolnir/plugin-sdk/manifest'
 import type { CatalogPlugin, PluginInfo } from '../../../shared/api'
 import { FALLBACK_LOCALE, SOURCE_LOCALE } from '../../../shared/locales'
@@ -13,6 +13,17 @@ export interface PluginView {
 }
 
 export const MOUNTED_VIEWS = 3
+
+const MAX_ID = 200
+const MAX_BRANCH = 250
+
+export function asNewSession(data: unknown): NewSessionRequest | null {
+  const message = data as { type?: unknown; repoId?: unknown; branch?: unknown } | null
+  if (message?.type !== 'mjolnir:newSession') return null
+  const { repoId, branch } = message
+  if (typeof repoId !== 'string' || typeof branch !== 'string' || !repoId || repoId.length > MAX_ID) return null
+  return { repoId, branch: branch.trim().slice(0, MAX_BRANCH) }
+}
 
 export function pluginOrigin(pluginId: string): string {
   return `${PLUGIN_SCHEME}://${pluginId}`

@@ -90,11 +90,11 @@ Lo que cubre el diseño:
 
 ### 2. Azure DevOps como primer plugin
 
-Cuenta y PRs hechos en `plugins/azure-devops` (fase 3 de plugins). Falta probarlo contra una organización real y Boards.
+Cuenta, PRs y Boards hechos en `plugins/azure-devops`. Falta probarlo contra una organización real.
 
-- Cuenta (PAT y, si aplica, login con Microsoft).
-- PRs: implementar `PullRequestProvider` para Azure Repos (`matchRemote` para `dev.azure.com` y `*.visualstudio.com`).
-- Boards: vista de user stories del tablero/iteración, con link a la sesión o branch.
+- Boards: selector organización → proyecto → equipo → tablero → iteración (actual por defecto), columnas del tablero Kanban con sus cards, filtros "asignados a mí" y búsqueda, branches y PRs linkeados (resalta las cards linkeadas a la branch de la sesión) y mover cards entre columnas arrastrando o con Alt + ← / →. Mover setea el estado y la columna del tablero, con `test` sobre `/rev` para no pisar cambios de otro.
+- Tomar una card: panel de detalle con la branch sugerida (`feat/<id>-<título>`, `fix/` para bugs); la asigna, la pasa a la primera columna en curso y abre el formulario de nueva sesión del repo activo con esa branch (`ui.newSession`), donde se elige la base.
+- Pendiente en Boards: linkear la branch a la card una vez publicada, swimlanes, la mitad Doing/Done de las columnas partidas (hoy se muestra como badge y mover siempre cae en Doing), más de 200 items por consulta, login con Microsoft.
 
 ### 3. Más plugins
 
@@ -112,7 +112,8 @@ Cuenta y PRs hechos en `plugins/azure-devops` (fase 3 de plugins). Falta probarl
 ### Sesiones y terminales **∥**
 
 - Stage y commit desde la UI.
-- Persistir terminales/pestañas al reiniciar.
+- Persistir terminales/pestañas al reiniciar (siguiente). Decidido: se guarda qué pestañas tenía cada sesión (tipo, agente, perfil), no su contenido; al volver quedan "dormidas" y se levantan al activarlas, los agentes con `--continue` (las conversaciones de Claude y opencode van por directorio, y cada sesión es su worktree). El Launchpad ofrece Continuar / Nueva conversación. Retomar la conversación exacta por pestaña (`--resume <id>`) llega con los hooks.
+- Tomar un ticket con un agente (después de persistir pestañas): el formulario de nueva sesión elige agente y muestra un prompt inicial editable armado desde `.mjolnir/prompts/take.md` del repo (o uno por defecto), con `{id}`, `{title}`, `{url}`, `{branch}`, `{description}`. El prompt siempre se confirma: la descripción del ticket la escribe cualquiera de la organización. El escape por shell va en core con tests, o el agente se lanza directo con node-pty.
 - Estado de los agentes (trabajando, esperando input, terminó) vía hooks.
 - Agentes configurables desde ajustes (hoy están en `terminals/model.ts`).
 

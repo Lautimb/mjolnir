@@ -1,3 +1,4 @@
 {
-  "description": "Cuentas y pull requests de Azure Repos. Usá un PAT creado para todas las organizaciones, o la CLI de Azure (az login)."
+  "description": "Cuentas, pull requests y tableros de Azure DevOps. Usá un PAT creado para todas las organizaciones, o la CLI de Azure (az login).",
+  "boards": "Boards"
 }

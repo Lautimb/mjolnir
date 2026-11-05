@@ -29,3 +29,9 @@ export function worktreeSession(repo: Repo, worktree: Worktree): Session {
     worktree,
   }
 }
+
+export interface SessionDraft {
+  repoId: string
+  branch: string
+  nonce: number
+}

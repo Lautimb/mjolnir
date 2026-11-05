@@ -126,18 +126,20 @@ interface HostApi {
   storage: { get(key); set(key, value); delete(key); keys() }    // JSON por plugin, en <userData>/plugin-data/<id>/storage.json
   secrets: { get(key); set(key, value); delete(key) }            // safeStorage, namespaced por plugin
   http: { request(req: HttpRequest): Promise<HttpResponse> }     // desde main, sujeto a permissions.network
-  accounts: { token(provider, host): Promise<string | null> }    // de sus propios proveedores, o de otros con permissions.accounts
+  accounts: { token(provider, host); credential(provider, host) }  // de sus propios proveedores, o de otros con permissions.accounts
   providers: { register(id, implementation): Unsubscribe }        // solo en el background
   workspace: { repos(); worktrees(repoId); branches(repoId) }    // permissions.workspace = "read"
   repoFiles: { list(session, dir); read(session, path); write(session, path, text); delete(session, path) }  // dentro de permissions.repoFiles
-  ui: { notify(message, kind); openExternal(url); openView(viewId, params) }
+  ui: { notify(message, kind); openExternal(url); newSession({ repoId, branch }); openView(viewId, params) }
 }
 ```
 
 - Cada método tiene su schema zod en main. Lo que no pasa el schema o el chequeo de permiso devuelve un `AppError` con código (`pluginPermissionDenied`, `invalidRequest`…), que el SDK expone tal cual.
 - `http.request` devuelve status, headers y body (texto o base64) más timings, que es lo que necesita el cliente HTTP para mostrar la respuesta.
 - `repoFiles` existe por las colecciones por repo del cliente HTTP (por ejemplo `.mjolnir/http/**`). `session` es la que llega en el contexto (`repoId` + `worktree`); main verifica que el worktree exista en ese repo. Los paths son relativos, con `/`, y se validan en el SDK (`isSafeRepoPath`): nunca `.git` ni los nombres que Windows resuelve a `.git` (punto o espacio final, nombres cortos 8.3), porque escribir ahí es ejecutar código vía hooks. Main no sigue symlinks, escribe de forma atómica y limita el tamaño (5 MB por archivo, 5000 archivos por listado). `list` solo recorre las carpetas que pueden contener algo que matchee los globs: con `.mjolnir/http/**` no entra a `node_modules`.
-- Implementado hasta ahora (fase 3): `context`, `storage`, `secrets`, `http`, `repoFiles`, `accounts.token`, `providers.register` y `ui.notify` / `ui.openExternal`. `workspace.*` y `ui.openView` llegan con las fases que los usan.
+- `accounts.credential` devuelve `{ host, token, source }`, lo mismo que recibe un proveedor, para que una vista arme el header correcto (PAT → Basic, CLI → Bearer). `accounts.token` es solo el token.
+- `ui.newSession` abre el formulario de nueva sesión del repo con la branch completada; no crea nada sin que el usuario elija la base y confirme. Solo lo atienden las vistas que ven la sesión (`workspace` o `repoFiles`).
+- Implementado hasta ahora: `context`, `storage`, `secrets`, `http`, `repoFiles`, `accounts.token`, `accounts.credential`, `providers.register` y `ui.notify` / `ui.openExternal` / `ui.newSession`. `workspace.*` y `ui.openView` llegan con las fases que los usan.
 
 **Versionado**: los tipos que cruzan la frontera (`RemoteRepo`, `PullRequest*`, `CredentialSource`) viven en `@mjolnir/plugin-sdk/providers` y core los reexporta. `additions`, `deletions` y `changedFiles` del detalle de un PR pueden ser `null` (Azure no los da) y la UI los oculta. Cambiarlos de forma incompatible es subir `api` a 2; el host puede soportar 1 y 2 a la vez durante una transición.
 
@@ -239,4 +241,4 @@ Cada fase es un PR con CI verde.
 4. **Instalación** ✅ — `.mjp`, instalación desde archivo, aprobación de permisos, actualizaciones con permisos nuevos.
 5. **Catálogo y firma** ✅ — índice en `mjolnir-plugins`, pestaña "Disponibles", instalación y updates desde el catálogo, firma ed25519 de los first-party en el release.
 
-Boards (user stories) entra como vista del plugin de Azure DevOps después de la fase 3; no necesita nada nuevo del host.
+Boards entra como vista del plugin de Azure DevOps (`boards.html`). Del host necesitó solo `accounts.credential`, porque desde una vista no se sabía si el token era un PAT o de `az`.

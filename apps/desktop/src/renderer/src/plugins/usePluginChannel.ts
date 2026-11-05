@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
-import { seesWorkspace, type NotifyKind, type PluginContext, type PluginMessage, type ShellMessage, type WorkspaceSession } from '@mjolnir/plugin-sdk'
+import { seesWorkspace, type NewSessionRequest, type NotifyKind, type PluginContext, type PluginMessage, type ShellMessage, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import type { PluginInfo } from '../../../shared/api'
 import type { PluginPortRole } from '../../../shared/plugins'
 import { requestPort } from './connect'
-import { pluginOrigin } from './model'
+import { asNewSession, pluginOrigin } from './model'
 
 const MAX_NOTICE = 500
 
@@ -21,9 +21,10 @@ export interface ChannelOptions {
   context: Omit<PluginContext, 'session'>
   session: WorkspaceSession | null
   onNotify(message: string, kind: NotifyKind): void
+  onNewSession?(request: NewSessionRequest): void
 }
 
-export function usePluginChannel({ frame, plugin, role, context: base, session, onNotify }: ChannelOptions): () => Promise<void> {
+export function usePluginChannel({ frame, plugin, role, context: base, session, onNotify, onNewSession }: ChannelOptions): () => Promise<void> {
   const permissions = plugin.manifest?.permissions
   const visibleSession = permissions && seesWorkspace(permissions) ? session : null
   const context = useMemo<PluginContext>(() => ({ ...base, session: visibleSession }), [base, visibleSession])
@@ -43,11 +44,13 @@ export function usePluginChannel({ frame, plugin, role, context: base, session, 
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow) return
       const notice = asNotice(event.data)
-      if (notice) onNotify(notice.message, notice.kind)
+      if (notice) return onNotify(notice.message, notice.kind)
+      const request = visibleSession && role === 'view' ? asNewSession(event.data) : null
+      if (request) onNewSession?.(request)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [frame, onNotify])
+  }, [frame, onNotify, onNewSession, visibleSession, role])
 
   return async () => {
     const target = frame.current?.contentWindow
