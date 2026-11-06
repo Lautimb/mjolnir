@@ -16,10 +16,12 @@ const POLL_MS = 4000
 interface Props {
   session: Session
   sideBySide: boolean
+  tree: boolean
   onSideBySideChange(sideBySide: boolean): void
+  onTreeChange(tree: boolean): void
 }
 
-export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
+export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTreeChange }: Props) {
   const { t } = useI18n()
   const { repo, worktree } = session
   const [mode, setMode] = useState<CompareMode>('working')
@@ -119,7 +121,15 @@ export function DiffView({ session, sideBySide, onSideBySideChange }: Props) {
           <p>{mode === 'working' ? t('diff.emptyWorking') : t('diff.emptyBranch', { base: diff.base ?? 'HEAD' })}</p>
         </EmptyState>
       ) : (
-        <DiffBrowser files={files} sideBySide={sideBySide} reloadKey={`${diff?.from}:${reloadToken}`} loadFile={loadFile} />
+        <DiffBrowser
+          files={files}
+          sideBySide={sideBySide}
+          tree={tree}
+          onTreeChange={onTreeChange}
+          root={{ path: worktree.path, host: repo.host }}
+          reloadKey={`${diff?.from}:${reloadToken}`}
+          loadFile={loadFile}
+        />
       )}
     </section>
   )

@@ -8,6 +8,7 @@ export interface Settings {
   terminalCursorBlink: boolean
   terminalFontSize: number
   diffSideBySide: boolean
+  diffTree: boolean
   hiddenPluginViews: string[]
 }
 
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   terminalCursorBlink: true,
   terminalFontSize: 13,
   diffSideBySide: true,
+  diffTree: true,
   hiddenPluginViews: [],
 }
 

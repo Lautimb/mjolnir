@@ -19,6 +19,8 @@ interface Props {
   number: number
   providerName: string
   sideBySide: boolean
+  tree: boolean
+  onTreeChange(tree: boolean): void
 }
 
 type Tab = 'conversation' | 'files'
@@ -39,7 +41,7 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
   )
 }
 
-export function PullRequestDetail({ repoId, number, providerName, sideBySide }: Props) {
+export function PullRequestDetail({ repoId, number, providerName, sideBySide, tree, onTreeChange }: Props) {
   const { t } = useI18n()
   const ago = useRelativeTime()
   const [detail, setDetail] = useState<Detail | null>(null)
@@ -144,7 +146,7 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide }: 
           </form>
         </div>
       ) : (
-        diff && <DiffBrowser files={diff.files} sideBySide={sideBySide} reloadKey={diff.to} loadFile={loadFile} />
+        diff && <DiffBrowser files={diff.files} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} reloadKey={diff.to} loadFile={loadFile} />
       )}
     </div>
   )

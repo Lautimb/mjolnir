@@ -4,6 +4,7 @@ import { cx } from './cx'
 export interface SegmentedOption<T extends string> {
   value: T
   label: ReactNode
+  title?: string
 }
 
 const SIZES = { md: 'h-[26px]', sm: 'h-6', xs: 'h-[22px]' }
@@ -26,6 +27,8 @@ export function Segmented<T extends string>({ value, options, onChange, size = '
           type="button"
           role="radio"
           aria-checked={value === option.value}
+          title={option.title}
+          aria-label={option.title}
           className={cx(
             'flex items-center gap-1.5 rounded-sm px-3 text-sm text-muted hover:text-fg aria-checked:bg-selected aria-checked:text-fg',
             SIZES[size],
