@@ -16,6 +16,8 @@ import { PullRow, rowClass } from './PullRow'
 interface Props {
   session: Session
   sideBySide: boolean
+  tree: boolean
+  onTreeChange(tree: boolean): void
   onOpenSettings(): void
 }
 
@@ -33,7 +35,7 @@ function Empty({ children }: { children: ReactNode }) {
   )
 }
 
-export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
+export function PullsView({ session, sideBySide, tree, onTreeChange, onOpenSettings }: Props) {
   const { t } = useI18n()
   const repoId = session.repo?.id
   const branch = session.worktree?.branch ?? null
@@ -154,7 +156,7 @@ export function PullsView({ session, sideBySide, onOpenSettings }: Props) {
       </aside>
 
       {selection?.kind === 'pull' && (
-        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} sideBySide={sideBySide} />
+        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} />
       )}
       {selection?.kind === 'create' && branch && (
         <CreatePullRequestForm

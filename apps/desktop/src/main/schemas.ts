@@ -87,6 +87,7 @@ export const settings = z.object({
   terminalCursorBlink: z.boolean(),
   terminalFontSize: z.number().int().min(TERMINAL_FONT_SIZE.min).max(TERMINAL_FONT_SIZE.max),
   diffSideBySide: z.boolean(),
+  diffTree: z.boolean(),
   hiddenPluginViews: z.array(z.string().max(300)).max(1000),
 }) satisfies z.ZodType<Settings>
 

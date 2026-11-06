@@ -240,13 +240,15 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
           <DiffView
             session={session}
             sideBySide={settings.diffSideBySide}
+            tree={settings.diffTree}
             onSideBySideChange={(diffSideBySide) => updateSettings({ diffSideBySide })}
+            onTreeChange={(diffTree) => updateSettings({ diffTree })}
           />
         </Suspense>
       )}
       {view === 'pulls' && (
         <Suspense fallback={<section className={MAIN_COLUMN} />}>
-          <PullsView session={session} sideBySide={settings.diffSideBySide} onOpenSettings={() => setView('settings')} />
+          <PullsView session={session} sideBySide={settings.diffSideBySide} tree={settings.diffTree} onTreeChange={(diffTree) => updateSettings({ diffTree })} onOpenSettings={() => setView('settings')} />
         </Suspense>
       )}
       {views
