@@ -1,13 +1,17 @@
 import type { Repo } from '@mjolnir/core'
 import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
+import type { SavedTabs } from '../shared/api'
 import { readJson, writeJsonAtomic } from './json-file'
-import { settings as settingsSchema } from './schemas'
+import { savedTabs, settings as settingsSchema } from './schemas'
 
 interface StoreData {
   repos: Repo[]
   settings: Settings
   sessionBases: Record<string, string>
+  terminalTabs: SavedTabs
 }
+
+const NO_TABS: SavedTabs = { tabs: [], active: {} }
 
 export class Store {
   private data: StoreData
@@ -40,6 +44,15 @@ export class Store {
     this.save()
   }
 
+  terminalTabs(): SavedTabs {
+    return this.data.terminalTabs
+  }
+
+  setTerminalTabs(state: SavedTabs): void {
+    this.data.terminalTabs = state
+    this.save()
+  }
+
   settings(): Settings {
     return this.data.settings
   }
@@ -56,6 +69,7 @@ export class Store {
       repos: parsed.repos ?? [],
       settings: { ...DEFAULT_SETTINGS, ...settingsSchema.partial().catch({}).parse(parsed.settings) },
       sessionBases: parsed.sessionBases ?? {},
+      terminalTabs: savedTabs.catch(NO_TABS).parse(parsed.terminalTabs ?? NO_TABS),
     }
   }
 

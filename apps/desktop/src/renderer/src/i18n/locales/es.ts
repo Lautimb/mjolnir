@@ -79,6 +79,8 @@ export const es = {
   },
   launchpad: {
     terminal: 'Terminal',
+    continue: 'Continuar la última',
+    newConversation: 'Nueva',
   },
   agents: {
     claude: 'Agente de Anthropic',

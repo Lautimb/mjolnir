@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { isSafeRef, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
 import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
-import type { SpawnRequest } from '../shared/api'
+import type { SavedTabs, SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
 import { TERMINAL_FONT_SIZE, type Settings } from '../shared/settings'
 import { ZOOM_LEVELS } from '../shared/zoom'
@@ -55,6 +55,25 @@ export const spawnRequest: z.ZodType<SpawnRequest> = z.object({
   rows: z.number().int().min(1).max(1000),
   cwd: path.optional(),
   initialInput: z.string().max(1000).optional(),
+})
+
+export const MAX_SAVED_TABS = 200
+
+export const savedTabs: z.ZodType<SavedTabs> = z.object({
+  tabs: z
+    .array(
+      z.object({
+        id,
+        sessionKey: z.string().min(1).max(MAX_PATH),
+        kind: z.enum(['shell', 'agent']),
+        profileId: id,
+        label,
+        agent: id.optional(),
+        conversation: z.uuid().optional(),
+      }),
+    )
+    .max(MAX_SAVED_TABS),
+  active: z.record(z.string().max(MAX_PATH), id),
 })
 
 export const terminalSize = z.number().int().min(1).max(1000)

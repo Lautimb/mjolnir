@@ -87,6 +87,10 @@ const api: MjolnirApi = {
     onChange: (listener) => subscribe('plugins:changed', listener),
     onBackground: (listener) => subscribe('plugins:background', listener),
   },
+  tabs: {
+    load: () => ipcRenderer.invoke('tabs:load'),
+    save: (state) => ipcRenderer.send('tabs:save', state),
+  },
   pty: {
     spawn: (request) => ipcRenderer.invoke('pty:spawn', request),
     write: (id, data) => ipcRenderer.send('pty:write', id, data),

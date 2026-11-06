@@ -30,6 +30,21 @@ export interface SpawnRequest {
   initialInput?: string
 }
 
+export interface SavedTab {
+  id: string
+  sessionKey: string
+  kind: 'shell' | 'agent'
+  profileId: string
+  label: string
+  agent?: string
+  conversation?: string
+}
+
+export interface SavedTabs {
+  tabs: SavedTab[]
+  active: Record<string, string>
+}
+
 export interface SessionDiff {
   mode: CompareMode
   base: string | null
@@ -173,6 +188,10 @@ export interface MjolnirApi {
     connect(id: string, nonce: string, role: PluginPortRole): void
     onChange(listener: () => void): () => void
     onBackground(listener: (pluginId: string, running: boolean) => void): () => void
+  }
+  tabs: {
+    load(): Promise<SavedTabs>
+    save(state: SavedTabs): void
   }
   pty: {
     spawn(request: SpawnRequest): Promise<void>

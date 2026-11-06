@@ -2,10 +2,12 @@ import { spawnCommand } from '@mjolnir/core'
 import { AppError } from '../../shared/errors'
 import type { Services } from '.'
 import { handle, listen } from './handle'
-import { id, spawnRequest, terminalInput, terminalSize } from '../schemas'
+import { id, savedTabs, spawnRequest, terminalInput, terminalSize } from '../schemas'
 
-export function registerTerminalsIpc({ environment, terminals }: Services): void {
+export function registerTerminalsIpc({ environment, store, terminals }: Services): void {
   handle('profiles:list', [], () => environment.profiles)
+  handle('tabs:load', [], () => store.terminalTabs())
+  listen('tabs:save', [savedTabs], (state) => store.setTerminalTabs(state))
 
   handle('pty:spawn', [spawnRequest], ({ id: ptyId, profileId, cols, rows, cwd, initialInput }) => {
     const profile = environment.profiles.find((candidate) => candidate.id === profileId)
