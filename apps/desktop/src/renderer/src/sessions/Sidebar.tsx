@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ChevronRight, FolderPlus, GitBranch, Plus, SquareTerminal, Trash2, X, Zap } from 'lucide-react'
+import { ChevronRight, FolderPlus, GitBranch, MessageSquareText, Plus, SquareTerminal, Trash2, X, Zap } from 'lucide-react'
 import type { Repo, Worktree } from '@mjolnir/core/browser'
 import { describeError, hostLabel, useI18n } from '../i18n/I18nProvider'
 import type { Tab } from '../terminals/model'
@@ -7,7 +7,8 @@ import { Badge } from '../ui/Badge'
 import { IconButton } from '../ui/Button'
 import { cx, eyebrow } from '../ui/cx'
 import { SCRATCH_KEY, sessionKey, type SessionDraft } from './model'
-import { NewSessionForm } from './NewSessionForm'
+import { NewSessionForm, type TakeLaunch } from './NewSessionForm'
+import { TakePromptDialog } from './TakePromptDialog'
 
 interface Props {
   hidden: boolean
@@ -19,7 +20,7 @@ interface Props {
   onSelect(key: string): void
   onAddRepo(): void
   onRemoveRepo(repo: Repo): void
-  onCreateSession(repo: Repo, branch: string, base: string): Promise<void>
+  onCreateSession(repo: Repo, branch: string, base: string, take?: TakeLaunch): Promise<void>
   onRemoveSession(repo: Repo, worktree: Worktree): void
   draft: SessionDraft | null
   onDraftDone(): void
@@ -80,6 +81,7 @@ export function Sidebar(props: Props) {
   const { t } = useI18n()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [creatingIn, setCreatingIn] = useState<string | null>(null)
+  const [editingPrompt, setEditingPrompt] = useState<Repo | null>(null)
 
   const indicators = (key: string) => {
     const live = tabs.filter((tab) => tab.sessionKey === key && tab.exitCode === undefined)
@@ -143,6 +145,9 @@ export function Sidebar(props: Props) {
                   <IconButton title={t('sidebar.newSession')} onClick={stop(() => startCreating(repo.id))}>
                     <Plus size={14} />
                   </IconButton>
+                  <IconButton title={t('sidebar.takePrompt')} onClick={stop(() => setEditingPrompt(repo))}>
+                    <MessageSquareText size={14} />
+                  </IconButton>
                   <IconButton danger title={t('sidebar.removeRepo')} onClick={stop(() => props.onRemoveRepo(repo))}>
                     <X size={14} />
                   </IconButton>
@@ -180,10 +185,11 @@ export function Sidebar(props: Props) {
                   key={draft?.repoId === repo.id ? draft.nonce : 0}
                   repo={repo}
                   initialBranch={draft?.repoId === repo.id ? draft.branch : ''}
+                  ticket={draft?.repoId === repo.id ? draft.ticket : undefined}
                   fallbackBase={main?.branch ?? 'main'}
                   onCancel={stopCreating}
-                  onCreate={async (branch, base) => {
-                    await props.onCreateSession(repo, branch, base)
+                  onCreate={async (branch, base, take) => {
+                    await props.onCreateSession(repo, branch, base, take)
                     stopCreating()
                   }}
                 />
@@ -199,6 +205,7 @@ export function Sidebar(props: Props) {
           )
         })}
       </div>
+      {editingPrompt && <TakePromptDialog repo={editingPrompt} onClose={() => setEditingPrompt(null)} />}
     </aside>
   )
 }

@@ -15,14 +15,14 @@ export class PtyManager {
 
   constructor(private readonly send: Send) {}
 
-  spawn(id: string, command: Command, cols: number, rows: number, initialInput?: string): void {
+  spawn(id: string, command: Command, cols: number, rows: number, initialInput?: string, env: Record<string, string> = {}): void {
     this.kill(id)
     const pty = spawn(command.file, command.args, {
       name: 'xterm-256color',
       cols,
       rows,
       cwd: command.cwd ?? homedir(),
-      env: terminalEnv(),
+      env: { ...terminalEnv(), ...env },
     })
     pty.onData((data) => this.send('pty:data', id, data))
     pty.onExit(({ exitCode }) => {

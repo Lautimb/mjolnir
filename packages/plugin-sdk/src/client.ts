@@ -198,7 +198,7 @@ export function createMjolnir(port: MessagePort, shell: Shell, initial: PluginCo
     ui: {
       notify: (message, kind = 'info') => shell.post({ type: 'mjolnir:notify', message, kind }),
       openExternal: (url) => call('ui.openExternal', url),
-      newSession: ({ repoId, branch }) => shell.post({ type: 'mjolnir:newSession', repoId, branch }),
+      newSession: ({ repoId, branch, ticket }) => shell.post({ type: 'mjolnir:newSession', repoId, branch, ...(ticket && { ticket }) }),
     },
   }
 }

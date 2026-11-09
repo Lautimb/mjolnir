@@ -31,6 +31,12 @@ describe('agentLaunch', () => {
   it('opens opencode without an id because it cannot be chosen up front', () => {
     expect(agentLaunch(opencode, { mode: 'new' }, newId)).toEqual({ initialInput: 'opencode\r' })
   })
+
+  it('appends the prompt reference as a positional argument for Claude and with its flag for opencode', () => {
+    const promptArgument = '"$MJOLNIR_PROMPT"'
+    expect(agentLaunch(claude, { mode: 'new', promptArgument }, newId).initialInput).toBe(`claude --session-id ${newId()} "$MJOLNIR_PROMPT"\r`)
+    expect(agentLaunch(opencode, { mode: 'new', promptArgument }, newId).initialInput).toBe('opencode --prompt "$MJOLNIR_PROMPT"\r')
+  })
 })
 
 describe('wakeLaunch', () => {

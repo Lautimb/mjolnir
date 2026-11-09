@@ -28,6 +28,12 @@ export interface SpawnRequest {
   rows: number
   cwd?: string
   initialInput?: string
+  prompt?: string
+}
+
+export interface TakePrompts {
+  app: string | null
+  repo: string | null
 }
 
 export interface SavedTab {
@@ -142,6 +148,8 @@ export interface MjolnirApi {
     remove(id: string): Promise<void>
     branches(id: string): Promise<BranchList>
     fetch(id: string): Promise<BranchList>
+    takePrompts(id: string): Promise<TakePrompts>
+    setTakePrompt(id: string, template: string | null): Promise<void>
   }
   worktrees: {
     list(repoId: string): Promise<Worktree[]>

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isSafeRef, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
+import { isSafeRef, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
 import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SavedTabs, SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
@@ -55,7 +55,12 @@ export const spawnRequest: z.ZodType<SpawnRequest> = z.object({
   rows: z.number().int().min(1).max(1000),
   cwd: path.optional(),
   initialInput: z.string().max(1000).optional(),
+  prompt: z.string().min(1).max(MAX_PROMPT).optional(),
 })
+
+export const promptTemplate = z.string().trim().min(1).max(MAX_PROMPT).nullable()
+
+export const takePrompts = z.record(id, z.string().max(MAX_PROMPT))
 
 export const MAX_SAVED_TABS = 200
 

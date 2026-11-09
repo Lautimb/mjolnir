@@ -6,6 +6,7 @@ export interface AppErrorParams {
   unknownWorktree: { path: string }
   worktreeDirty: { name: string }
   unknownProfile: { id: string }
+  promptUnsupported: { profile: string }
   worktreeMissing: { path: string }
   unsupportedRemote: NoParams
   noAccount: { provider: string }

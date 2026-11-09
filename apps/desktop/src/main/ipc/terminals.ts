@@ -1,4 +1,4 @@
-import { spawnCommand } from '@mjolnir/core'
+import { promptEnv, spawnCommand, supportsPrompt } from '@mjolnir/core'
 import { AppError } from '../../shared/errors'
 import type { Services } from '.'
 import { handle, listen } from './handle'
@@ -9,10 +9,12 @@ export function registerTerminalsIpc({ environment, store, terminals }: Services
   handle('tabs:load', [], () => store.terminalTabs())
   listen('tabs:save', [savedTabs], (state) => store.setTerminalTabs(state))
 
-  handle('pty:spawn', [spawnRequest], ({ id: ptyId, profileId, cols, rows, cwd, initialInput }) => {
+  handle('pty:spawn', [spawnRequest], ({ id: ptyId, profileId, cols, rows, cwd, initialInput, prompt }) => {
     const profile = environment.profiles.find((candidate) => candidate.id === profileId)
     if (!profile) throw new AppError('unknownProfile', { id: profileId })
-    terminals.spawn(ptyId, spawnCommand(profile, cwd), cols, rows, initialInput)
+    if (prompt && !supportsPrompt(profile)) throw new AppError('promptUnsupported', { profile: profile.label })
+    const env = prompt ? promptEnv(profile, prompt, process.env.WSLENV) : {}
+    terminals.spawn(ptyId, spawnCommand(profile, cwd), cols, rows, initialInput, env)
   })
   listen('pty:write', [id, terminalInput], (ptyId, data) => terminals.write(ptyId, data))
   listen('pty:resize', [id, terminalSize, terminalSize], (ptyId, cols, rows) => terminals.resize(ptyId, cols, rows))

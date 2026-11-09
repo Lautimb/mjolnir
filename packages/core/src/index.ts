@@ -1,5 +1,6 @@
 export * from './hosts'
 export * from './profiles'
+export * from './prompts'
 export * from './git'
 export * from './branches'
 export * from './refs'

@@ -38,6 +38,7 @@ export const es = {
     removeRepo: 'Quitar repositorio de Mjolnir',
     removeSession: 'Eliminar sesión y su worktree',
     agentActive: 'Agente activo',
+    takePrompt: 'Prompt para tomar tickets',
   },
   sessions: {
     confirmRemoveRepo: '¿Quitar "{name}" de Mjolnir?\n\nNo se borra nada del disco. Se cierran sus terminales.',
@@ -54,6 +55,18 @@ export const es = {
     creating: 'Creando…',
     open: 'Abrir sesión',
     create: 'Crear sesión',
+    agent: 'Agente',
+    noAgent: 'Ninguno',
+    prompt: 'Prompt inicial',
+    resetPrompt: 'Restablecer',
+    promptReview: 'Revisalo antes de crear: la descripción del ticket la puede escribir cualquiera de la organización.',
+  },
+  take: {
+    title: 'Prompt para tomar tickets en {repo}',
+    hint: 'Se usa al tomar un ticket desde un plugin. Vacío usa {file} del repo o el prompt por defecto. Variables: {vars}',
+    save: 'Guardar',
+    defaultPrompt:
+      'Tomá el ticket #{id}: {title}\n{url}\n\n{description}\n\nEstás en la branch {branch}. Leé el código relevante y proponé un plan antes de hacer cambios.',
   },
   branchPicker: {
     search: 'Buscar rama…',
@@ -337,6 +350,7 @@ export const es = {
     unknownWorktree: 'La carpeta {path} no es un worktree de este repo.',
     worktreeDirty: '{name} tiene cambios sin commitear.',
     unknownProfile: 'Perfil de terminal desconocido: {id}',
+    promptUnsupported: '{profile} no puede recibir el prompt inicial del agente. Usá PowerShell o una shell de WSL.',
     worktreeMissing: 'El worktree no aparece en {path}',
     unsupportedRemote: 'El remoto de este repo no corresponde a ningún proveedor soportado.',
     noAccount: 'Conectá una cuenta de {provider} en Ajustes → Cuentas para ver sus PRs.',

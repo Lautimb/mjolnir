@@ -1,4 +1,5 @@
-import type { Host, Repo, Worktree } from '@mjolnir/core/browser'
+import { PROMPT_VARS, type Host, type PromptVar, type Repo, type Ticket, type Worktree } from '@mjolnir/core/browser'
+import type { T } from '../i18n/I18nProvider'
 
 export const SCRATCH_KEY = 'scratch'
 
@@ -38,5 +39,12 @@ export function worktreeSession(repo: Repo, worktree: Worktree): Session {
 export interface SessionDraft {
   repoId: string
   branch: string
+  ticket?: Ticket
   nonce: number
+}
+
+const KEEP_PROMPT_VARS = Object.fromEntries(PROMPT_VARS.map((name) => [name, `{${name}}`])) as Record<PromptVar, string>
+
+export function defaultTakePrompt(t: T): string {
+  return t('take.defaultPrompt', KEEP_PROMPT_VARS)
 }

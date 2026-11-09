@@ -1,5 +1,6 @@
 export * from './hosts'
 export type { TerminalProfile } from './profiles'
+export * from './prompts'
 export type { Worktree } from './git'
 export * from './branches'
 export * from './refs'

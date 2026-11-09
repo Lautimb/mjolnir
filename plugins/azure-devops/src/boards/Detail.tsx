@@ -52,7 +52,10 @@ export function Detail({ client, scope, board, item, me, session, onChange, onSt
           ui.notify(describeError(t, error), 'error')
         }
       }
-      if (session && name) ui.newSession({ repoId: session.repoId, branch: name })
+      if (session && name) {
+        const ticket = { id: String(current.id), title: current.title, url: workItemUrl(scope.org, scope.project, current.id), description }
+        ui.newSession({ repoId: session.repoId, branch: name, ticket })
+      }
     } catch (error) {
       ui.notify(describeError(t, error), 'error')
       onStale()

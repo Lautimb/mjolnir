@@ -11,6 +11,7 @@ export interface Tab {
   dormant?: boolean
   cwd?: string
   initialInput?: string
+  prompt?: string
   exitCode?: number
 }
 
@@ -21,22 +22,24 @@ export interface Agent {
   label: string
   command: string
   conversationFlags?: { start: string; resume: string }
+  promptFlag?: string
 }
 
 export const AGENTS: Agent[] = [
   { id: 'claude', label: 'Claude Code', command: 'claude', conversationFlags: { start: '--session-id', resume: '--resume' } },
-  { id: 'opencode', label: 'opencode', command: 'opencode' },
+  { id: 'opencode', label: 'opencode', command: 'opencode', promptFlag: '--prompt' },
 ]
 
-export type Launch = { mode: 'new' } | { mode: 'latest' } | { mode: 'resume'; conversation: string }
+export type Launch = { mode: 'new'; promptArgument?: string } | { mode: 'latest' } | { mode: 'resume'; conversation: string }
 
 export function agentLaunch(agent: Agent, launch: Launch, newId: () => string): Pick<Tab, 'conversation' | 'initialInput'> {
   if (launch.mode === 'latest') return { initialInput: `${agent.command} --continue\r` }
+  const prompt = launch.mode === 'new' && launch.promptArgument ? [agent.promptFlag, launch.promptArgument] : []
   const flags = agent.conversationFlags
-  if (!flags) return { initialInput: `${agent.command}\r` }
-  const conversation = launch.mode === 'resume' ? launch.conversation : newId()
-  const flag = launch.mode === 'resume' ? flags.resume : flags.start
-  return { conversation, initialInput: `${agent.command} ${flag} ${conversation}\r` }
+  const conversation = flags && (launch.mode === 'resume' ? launch.conversation : newId())
+  const pinned = flags && conversation ? [launch.mode === 'resume' ? flags.resume : flags.start, conversation] : []
+  const command = [agent.command, ...pinned, ...prompt].filter(Boolean).join(' ')
+  return { ...(conversation && { conversation }), initialInput: `${command}\r` }
 }
 
 export function wakeLaunch(tab: Tab, tabs: Tab[]): Launch {

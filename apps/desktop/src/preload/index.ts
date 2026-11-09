@@ -40,6 +40,8 @@ const api: MjolnirApi = {
     remove: (id) => ipcRenderer.invoke('repos:remove', id),
     branches: (id) => ipcRenderer.invoke('repos:branches', id),
     fetch: (id) => ipcRenderer.invoke('repos:fetch', id),
+    takePrompts: (id) => ipcRenderer.invoke('repos:takePrompts', id),
+    setTakePrompt: (id, template) => ipcRenderer.invoke('repos:setTakePrompt', id, template),
   },
   worktrees: {
     list: (repoId) => ipcRenderer.invoke('worktrees:list', repoId),

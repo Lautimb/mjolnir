@@ -108,9 +108,17 @@ export type NotifyKind = 'info' | 'error'
 
 export type ShellMessage = { type: 'mjolnir:connect'; context: PluginContext } | { type: 'mjolnir:context'; context: PluginContext }
 
+export interface SessionTicket {
+  id: string
+  title: string
+  url?: string
+  description?: string
+}
+
 export interface NewSessionRequest {
   repoId: string
   branch: string
+  ticket?: SessionTicket
 }
 
 export type PluginMessage = { type: 'mjolnir:notify'; message: string; kind: NotifyKind } | ({ type: 'mjolnir:newSession' } & NewSessionRequest)

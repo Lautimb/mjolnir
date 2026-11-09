@@ -12,6 +12,7 @@ import {
   isInside,
   resolveLocation,
   sameHost,
+  TAKE_PROMPT_FILE,
   toNativePath,
   worktreePath,
   type CompareMode,
@@ -23,7 +24,7 @@ import {
   type Repo,
   type Worktree,
 } from '@mjolnir/core'
-import type { DiffFile, SessionDiff } from '../shared/api'
+import type { DiffFile, SessionDiff, TakePrompts } from '../shared/api'
 import { AppError } from '../shared/errors'
 import { diffContent, MAX_DIFF_BYTES } from './diff-content'
 import type { Store } from './store'
@@ -136,6 +137,20 @@ export class Workspace {
     const nativePath = toNativePath(process.platform, repo.host, target)
     if ((await stat(nativePath)).size > MAX_DIFF_BYTES) return null
     return readFile(nativePath, 'utf8')
+  }
+
+  async takePrompts(repoId: string): Promise<TakePrompts> {
+    const repo = this.repo(repoId)
+    const shared = await this.readWorkingFile(repo, repo.path, TAKE_PROMPT_FILE).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null
+      throw error
+    })
+    return { app: this.store.takePrompt(repoId), repo: shared?.trim() || null }
+  }
+
+  setTakePrompt(repoId: string, template: string | null): void {
+    this.repo(repoId)
+    this.store.setTakePrompt(repoId, template)
   }
 
   async changedFiles(repoId: string, path: string): Promise<number> {
