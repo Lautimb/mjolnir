@@ -25,6 +25,7 @@ import { MainWindow } from './window'
 import { Workspace } from './workspace'
 
 registerPluginScheme()
+if (process.platform === 'win32') app.setAppUserModelId('dev.mjolnir.app')
 
 interface PluginDeps {
   userData: string
