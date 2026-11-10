@@ -85,4 +85,16 @@ describe('asNewSession', () => {
     expect(asNewSession({ type: 'mjolnir:newSession', repoId: '', branch: 'b' })).toBeNull()
     expect(asNewSession(null)).toBeNull()
   })
+
+  it('keeps a ticket with id and title, trimmed, and drops urls that are not http', () => {
+    const request = { type: 'mjolnir:newSession', repoId: 'r1', branch: 'b' }
+    expect(asNewSession({ ...request, ticket: { id: ' 42 ', title: 'Login', url: 'https://x/42', description: ' d ', extra: 1 } })).toEqual({
+      repoId: 'r1',
+      branch: 'b',
+      ticket: { id: '42', title: 'Login', url: 'https://x/42', description: 'd' },
+    })
+    expect(asNewSession({ ...request, ticket: { id: '42', title: 'Login', url: 'javascript:alert(1)' } })?.ticket).toEqual({ id: '42', title: 'Login' })
+    expect(asNewSession({ ...request, ticket: { id: 42, title: 'Login' } })).toEqual({ repoId: 'r1', branch: 'b' })
+    expect(asNewSession({ ...request, ticket: { id: '42', title: ' ' } })).toEqual({ repoId: 'r1', branch: 'b' })
+  })
 })

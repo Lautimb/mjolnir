@@ -23,7 +23,7 @@ Hecho y en `main`:
 | --- | --- |
 | Sesiones | Repos por host (Windows, WSL, posix), descubrimiento de repos, sesiones = worktrees en `~/.mjolnir/worktrees/<repo>/<branch>` del lado del host del repo |
 | Terminales | Pestañas por sesión con node-pty, perfiles detectados por plataforma, lanzador de agentes |
-| Diff | Vista por sesión (cambios sin commitear o toda la branch contra su base) con Monaco, badge de archivos cambiados |
+| Diff | Vista por sesión (cambios sin commitear o toda la branch contra su base) con Monaco, badge de archivos cambiados. Historial de commits de la sesión (los propios de la branch o todo, paginado) con el diff de cada commit contra su primer padre |
 | PRs | GitHub: listar (míos / para revisar / todos × abiertos / cerrados / todos), detalle, comentarios, crear (publica la branch si hace falta), diff del PR |
 | Cuentas | Modelo de cuentas por proveedor: CLI (`gh`), token, device flow (pendiente de Client ID). Secretos con `safeStorage` |
 | i18n | Español (fuente de verdad) e inglés, tipado, preparado para más idiomas |
@@ -112,9 +112,9 @@ Cuenta, PRs y Boards hechos en `plugins/azure-devops`. Falta probarlo contra una
 ### Sesiones y terminales **∥**
 
 - Stage y commit desde la UI.
-- Persistir terminales/pestañas al reiniciar: hecho. Se guarda qué pestañas tenía cada sesión (tipo, agente, perfil), no su contenido; al volver quedan "dormidas" y se levantan al activarlas. Claude arranca cada pestaña con `--session-id <uuid>` y al despertar retoma esa conversación con `--resume <uuid>`. opencode no deja fijar el id al crear, así que usa `--continue` solo si es la única pestaña de ese agente en la sesión; si hay más, abre una nueva. El Launchpad ofrece Continuar la última / Nueva. Pendiente: seguir el id cuando cambia dentro de la pestaña (`/clear`, `/resume`) vía hooks, y una pestaña de Claude sin mensajes falla al retomar ("No conversation found").
-- Tomar un ticket con un agente (siguiente): el formulario de nueva sesión elige agente y muestra un prompt inicial editable armado desde `.mjolnir/prompts/take.md` del repo (o uno por defecto), con `{id}`, `{title}`, `{url}`, `{branch}`, `{description}`. El prompt siempre se confirma: la descripción del ticket la escribe cualquiera de la organización. El escape por shell va en core con tests, o el agente se lanza directo con node-pty.
-- Estado de los agentes (trabajando, esperando input, terminó) vía hooks.
+- Persistir terminales/pestañas al reiniciar: hecho. Se guarda qué pestañas tenía cada sesión (tipo, agente, perfil), no su contenido; al volver quedan "dormidas" y se levantan al activarlas. Claude arranca cada pestaña con `--session-id <uuid>` y al despertar retoma esa conversación con `--resume <uuid>`. opencode no deja fijar el id al crear, así que usa `--continue` solo si es la única pestaña de ese agente en la sesión; si hay más, abre una nueva. El Launchpad ofrece Continuar la última / Nueva. Con los hooks de estado, la pestaña sigue el id cuando cambia adentro (`/clear`, `/resume`, `--continue`) y una conversación sin mensajes se abre de nuevo en vez de fallar al retomar.
+- Tomar un ticket con un agente: hecho. Cuando un plugin pide una sesión con ticket, el formulario de nueva sesión elige agente (Claude, opencode o ninguno) y muestra un prompt inicial editable, con "Restablecer". La plantilla sale, en orden, de la guardada en la app para ese repo (botón en la fila del repo), de `.mjolnir/prompts/take.md` o de una por defecto, con `{id}`, `{title}`, `{url}`, `{branch}`, `{description}`. El prompt siempre se confirma: la descripción del ticket la escribe cualquiera de la organización. Llega al agente por la variable `MJOLNIR_PROMPT` (nunca por escape de shell): `"$MJOLNIR_PROMPT"` en shells posix y `$env:MJOLNIR_PROMPT` en PowerShell, con `WSLENV` para cruzar a WSL y el valor pre-escapado para Windows PowerShell 5.1. cmd no está soportado.
+- Estado de los agentes: hecho para Claude. Se lanza con `--settings "$MJOLNIR_AGENT_SETTINGS"`, que agrega hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`, `Notification`, `Stop`, `SessionEnd`) sin tocar la configuración del usuario ni del repo. Cada hook vuelca su payload con `cat > "$MJOLNIR_AGENT_STATUS"` a `<datos de la app>/agent-status/<pestaña>.json`, que el main vigila; la ruta cruza a WSL con `WSLENV` (`/p`). Se muestra en la pestaña y en la sesión del panel (espera tu respuesta > trabajando > terminó), con notificación del sistema si la ventana no tiene foco. cmd no está soportado. Pendiente: opencode (eventos de su sistema de plugins), un ajuste para apagar las notificaciones.
 - Agentes configurables desde ajustes (hoy están en `terminals/model.ts`).
 
 ### Distribución
@@ -130,6 +130,7 @@ Cuenta, PRs y Boards hechos en `plugins/azure-devops`. Falta probarlo contra una
 - `GITHUB_OAUTH_CLIENT_ID` en `apps/desktop/src/main/providers.ts`: registrar una OAuth App con Device Flow para habilitar "Conectar con el navegador".
 - Validar `accounts.json` al cargarlo (hoy se confía en el archivo).
 - Separar los datos del modo dev de los de la app instalada para que no compartan caché.
+- Diff: blame por línea (estilo GitLens) sobre el historial.
 
 ## Comandos
 

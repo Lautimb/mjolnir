@@ -2,13 +2,14 @@ import type { Repo } from '@mjolnir/core'
 import { DEFAULT_SETTINGS, type Settings } from '../shared/settings'
 import type { SavedTabs } from '../shared/api'
 import { readJson, writeJsonAtomic } from './json-file'
-import { savedTabs, settings as settingsSchema } from './schemas'
+import { savedTabs, settings as settingsSchema, takePrompts } from './schemas'
 
 interface StoreData {
   repos: Repo[]
   settings: Settings
   sessionBases: Record<string, string>
   terminalTabs: SavedTabs
+  takePrompts: Record<string, string>
 }
 
 const NO_TABS: SavedTabs = { tabs: [], active: {} }
@@ -31,6 +32,8 @@ export class Store {
 
   removeRepo(id: string): void {
     this.data.repos = this.data.repos.filter((repo) => repo.id !== id)
+    const { [id]: _, ...prompts } = this.data.takePrompts
+    this.data.takePrompts = prompts
     this.save()
   }
 
@@ -41,6 +44,16 @@ export class Store {
   setSessionBase(key: string, base: string | null): void {
     const { [key]: _, ...rest } = this.data.sessionBases
     this.data.sessionBases = base ? { ...rest, [key]: base } : rest
+    this.save()
+  }
+
+  takePrompt(repoId: string): string | null {
+    return this.data.takePrompts[repoId] ?? null
+  }
+
+  setTakePrompt(repoId: string, template: string | null): void {
+    const { [repoId]: _, ...rest } = this.data.takePrompts
+    this.data.takePrompts = template ? { ...rest, [repoId]: template } : rest
     this.save()
   }
 
@@ -70,6 +83,7 @@ export class Store {
       settings: { ...DEFAULT_SETTINGS, ...settingsSchema.partial().catch({}).parse(parsed.settings) },
       sessionBases: parsed.sessionBases ?? {},
       terminalTabs: savedTabs.catch(NO_TABS).parse(parsed.terminalTabs ?? NO_TABS),
+      takePrompts: takePrompts.catch({}).parse(parsed.takePrompts ?? {}),
     }
   }
 

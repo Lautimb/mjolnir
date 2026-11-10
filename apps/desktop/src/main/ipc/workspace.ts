@@ -2,7 +2,7 @@ import { dialog } from 'electron'
 import { hostHome, toNativePath } from '@mjolnir/core'
 import type { Services } from '.'
 import { handle } from './handle'
-import { compareMode, fileChange, flag, host, id, label, path, ref } from '../schemas'
+import { compareMode, fileChange, flag, historyLimit, historyScope, host, id, label, path, promptTemplate, ref } from '../schemas'
 
 export function registerWorkspaceIpc({ environment, window, workspace }: Services): void {
   handle('repos:list', [], () => workspace.repos())
@@ -20,6 +20,8 @@ export function registerWorkspaceIpc({ environment, window, workspace }: Service
   handle('repos:remove', [id], (repoId) => workspace.removeRepo(repoId))
   handle('repos:branches', [id], (repoId) => workspace.branches(repoId))
   handle('repos:fetch', [id], (repoId) => workspace.fetch(repoId))
+  handle('repos:takePrompts', [id], (repoId) => workspace.takePrompts(repoId))
+  handle('repos:setTakePrompt', [id, promptTemplate], (repoId, template) => workspace.setTakePrompt(repoId, template))
 
   handle('worktrees:list', [id], (repoId) => workspace.worktrees(repoId))
   handle('worktrees:create', [id, ref, ref], (repoId, branch, base) => workspace.createWorktree(repoId, branch, base))
@@ -28,4 +30,9 @@ export function registerWorkspaceIpc({ environment, window, workspace }: Service
 
   handle('diff:compare', [id, path, compareMode], (repoId, worktree, mode) => workspace.compare(repoId, worktree, mode))
   handle('diff:file', [id, path, ref, fileChange], (repoId, worktree, from, change) => workspace.diffFile(repoId, worktree, from, change))
+  handle('diff:history', [id, path, historyScope, historyLimit], (repoId, worktree, scope, limit) => workspace.history(repoId, worktree, scope, limit))
+  handle('diff:commit', [id, path, ref], (repoId, worktree, sha) => workspace.commitDiff(repoId, worktree, sha))
+  handle('diff:commitFile', [id, path, ref, ref, fileChange], (repoId, worktree, from, to, change) =>
+    workspace.commitFile(repoId, worktree, from, to, change),
+  )
 }

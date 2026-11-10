@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { sameHost, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
+import { AGENT_SETTINGS_ENV, envReference, promptArgument, sameHost, supportsPrompt, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
 import { readTheme, type NewSessionRequest, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { appErrorCode } from '../../../shared/errors'
 import type { Settings } from '../../../shared/settings'
@@ -12,6 +12,7 @@ import { PluginsView } from '../plugins/PluginsView'
 import { usePlugins } from '../plugins/usePlugins'
 import { AddRepoDialog } from '../sessions/AddRepoDialog'
 import { repoKeyPrefix, SCRATCH_KEY, sessionKey, type SessionDraft } from '../sessions/model'
+import type { TakeLaunch } from '../sessions/NewSessionForm'
 import { Sidebar } from '../sessions/Sidebar'
 import { useSessions } from '../sessions/useSessions'
 import { useWorkspace } from '../sessions/useWorkspace'
@@ -21,6 +22,7 @@ import { Launchpad } from '../terminals/Launchpad'
 import { agentLaunch, type Agent } from '../terminals/model'
 import { TabBar } from '../terminals/TabBar'
 import { TerminalView } from '../terminals/TerminalView'
+import { useAgentNotifications } from '../terminals/useAgentNotifications'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
 import { cx } from '../ui/cx'
 import { LAYOUTS, MAIN_COLUMN } from './layout'
@@ -115,6 +117,19 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     if (view === 'sessions' && activeTab?.dormant) wakeTab(activeTab.id)
   }, [view, activeTab, wakeTab])
 
+  useAgentNotifications(
+    terminals.tabs,
+    (key) => {
+      const target = sessions.get(key)
+      return target?.repo ? `${target.repo.name} · ${target.title}` : (target?.title ?? '')
+    },
+    (tab) => {
+      setActiveKey(tab.sessionKey)
+      terminals.activate(tab.sessionKey, tab.id)
+      setView('sessions')
+    },
+  )
+
   const openShell = (profile: TerminalProfile) =>
     terminals.open(session.key, { profile, label: profile.label, kind: 'shell', cwd: session.cwd })
 
@@ -127,7 +142,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       kind: 'agent',
       agent: agent.id,
       cwd: session.cwd,
-      ...agentLaunch(agent, { mode: resume ? 'latest' : 'new' }, () => crypto.randomUUID()),
+      ...agentLaunch(agent, { mode: resume ? 'latest' : 'new' }, () => crypto.randomUUID(), envReference(profile, AGENT_SETTINGS_ENV)),
     })
   }
 
@@ -149,9 +164,29 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     await workspace.removeRepo(repo.id)
   }
 
-  const createSession = async (repo: Repo, branch: string, base: string) => {
+  const createSession = async (repo: Repo, branch: string, base: string, take?: TakeLaunch) => {
+    const hostProfiles = profiles.filter((profile) => sameHost(profile.host, repo.host))
+    const profile = take && hostProfiles.find(supportsPrompt)
+    if (take && !profile) throw new Error(hostProfiles[0] ? t('errors.promptUnsupported', { profile: hostProfiles[0].label }) : t('errors.noTerminal'))
     const worktree = await workspace.createWorktree(repo.id, branch, base)
-    setActiveKey(sessionKey(repo, worktree))
+    const key = sessionKey(repo, worktree)
+    setActiveKey(key)
+    if (!take || !profile) return
+    terminals.open(key, {
+      profile,
+      label: take.agent.label,
+      kind: 'agent',
+      agent: take.agent.id,
+      cwd: worktree.path,
+      prompt: take.prompt,
+      ...agentLaunch(
+        take.agent,
+        { mode: 'new', promptArgument: promptArgument(profile) ?? undefined },
+        () => crypto.randomUUID(),
+        envReference(profile, AGENT_SETTINGS_ENV),
+      ),
+    })
+    setView('sessions')
   }
 
   const removeSession = async (repo: Repo, worktree: Worktree) => {

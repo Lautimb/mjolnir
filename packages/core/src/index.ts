@@ -1,5 +1,7 @@
 export * from './hosts'
 export * from './profiles'
+export * from './prompts'
+export * from './agent-hooks'
 export * from './git'
 export * from './branches'
 export * from './refs'

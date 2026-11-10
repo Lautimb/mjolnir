@@ -8,10 +8,13 @@ import type { Session } from '../sessions/model'
 import { IconButton } from '../ui/Button'
 import { EmptyState, Note } from '../ui/EmptyState'
 import { Segmented } from '../ui/Segmented'
+import { CommitHistory } from './CommitHistory'
 import { DiffBrowser } from './DiffBrowser'
 import { Stats } from './Stats'
 
 const POLL_MS = 4000
+
+type ViewMode = CompareMode | 'history'
 
 interface Props {
   session: Session
@@ -24,7 +27,7 @@ interface Props {
 export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTreeChange }: Props) {
   const { t } = useI18n()
   const { repo, worktree } = session
-  const [mode, setMode] = useState<CompareMode>('working')
+  const [mode, setMode] = useState<ViewMode>('working')
   const [diff, setDiff] = useState<SessionDiff | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -34,7 +37,7 @@ export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTree
   const path = worktree?.path
 
   const load = useCallback(async () => {
-    if (!repoId || !path) return
+    if (!repoId || !path || mode === 'history') return
     try {
       setDiff(await window.mjolnir.diff.compare(repoId, path, mode))
       setError(null)
@@ -93,6 +96,7 @@ export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTree
           options={[
             { value: 'working', label: t('diff.modes.working') },
             { value: 'branch', label: t('diff.modes.branch') },
+            { value: 'history', label: t('diff.modes.history') },
           ]}
           onChange={setMode}
         />
@@ -101,10 +105,12 @@ export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTree
             {diff?.base ? t('diff.versus', { base: diff.base }) : t('diff.noBase')}
           </span>
         )}
-        <span className="flex gap-2 text-muted">
-          {t('diff.files', { count: files.length })}
-          {files.length > 0 && <Stats additions={totals.additions} deletions={totals.deletions} />}
-        </span>
+        {mode !== 'history' && (
+          <span className="flex gap-2 text-muted">
+            {t('diff.files', { count: files.length })}
+            {files.length > 0 && <Stats additions={totals.additions} deletions={totals.deletions} />}
+          </span>
+        )}
         <span className="flex-1" />
         <IconButton title={sideBySide ? t('diff.inline') : t('diff.sideBySide')} onClick={() => onSideBySideChange(!sideBySide)}>
           {sideBySide ? <Rows2 size={15} /> : <Columns2 size={15} />}
@@ -116,7 +122,18 @@ export function DiffView({ session, sideBySide, tree, onSideBySideChange, onTree
 
       {error !== null && <Note error>{describeError(t, error)}</Note>}
 
-      {error === null && diff && files.length === 0 ? (
+      {mode === 'history' ? (
+        <CommitHistory
+          key={`${repo.id}:${worktree.path}`}
+          repoId={repo.id}
+          path={worktree.path}
+          root={{ path: worktree.path, host: repo.host }}
+          sideBySide={sideBySide}
+          tree={tree}
+          onTreeChange={onTreeChange}
+          reloadToken={reloadToken}
+        />
+      ) : error === null && diff && files.length === 0 ? (
         <EmptyState icon={<FileDiff size={22} />}>
           <p>{mode === 'working' ? t('diff.emptyWorking') : t('diff.emptyBranch', { base: diff.base ?? 'HEAD' })}</p>
         </EmptyState>

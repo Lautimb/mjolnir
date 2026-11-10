@@ -22,6 +22,8 @@ const api: MjolnirApi = {
     close: () => ipcRenderer.send('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     onMaximizedChange: (listener) => subscribe('window:maximized', listener),
+    notify: (tag, title, body) => ipcRenderer.send('window:notify', tag, title, body),
+    onNotificationClick: (listener) => subscribe('window:notificationClick', listener),
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
@@ -40,6 +42,8 @@ const api: MjolnirApi = {
     remove: (id) => ipcRenderer.invoke('repos:remove', id),
     branches: (id) => ipcRenderer.invoke('repos:branches', id),
     fetch: (id) => ipcRenderer.invoke('repos:fetch', id),
+    takePrompts: (id) => ipcRenderer.invoke('repos:takePrompts', id),
+    setTakePrompt: (id, template) => ipcRenderer.invoke('repos:setTakePrompt', id, template),
   },
   worktrees: {
     list: (repoId) => ipcRenderer.invoke('worktrees:list', repoId),
@@ -71,6 +75,9 @@ const api: MjolnirApi = {
   diff: {
     compare: (repoId, path, mode) => ipcRenderer.invoke('diff:compare', repoId, path, mode),
     file: (repoId, path, from, change) => ipcRenderer.invoke('diff:file', repoId, path, from, change),
+    history: (repoId, path, scope, limit) => ipcRenderer.invoke('diff:history', repoId, path, scope, limit),
+    commit: (repoId, path, sha) => ipcRenderer.invoke('diff:commit', repoId, path, sha),
+    commitFile: (repoId, path, from, to, change) => ipcRenderer.invoke('diff:commitFile', repoId, path, from, to, change),
   },
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),
@@ -98,6 +105,7 @@ const api: MjolnirApi = {
     kill: (id) => ipcRenderer.send('pty:kill', id),
     onData: (listener) => subscribe('pty:data', listener),
     onExit: (listener) => subscribe('pty:exit', listener),
+    onAgentEvent: (listener) => subscribe('pty:agentEvent', listener),
   },
 }
 

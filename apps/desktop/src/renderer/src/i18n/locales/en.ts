@@ -39,6 +39,7 @@ export const en: Messages = {
     removeRepo: 'Remove repository from Mjolnir',
     removeSession: 'Delete session and its worktree',
     agentActive: 'Agent running',
+    takePrompt: 'Prompt for taking tickets',
   },
   sessions: {
     confirmRemoveRepo: 'Remove "{name}" from Mjolnir?\n\nNothing is deleted from disk. Its terminals will be closed.',
@@ -55,6 +56,18 @@ export const en: Messages = {
     creating: 'Creating…',
     open: 'Open session',
     create: 'Create session',
+    agent: 'Agent',
+    noAgent: 'None',
+    prompt: 'Initial prompt',
+    resetPrompt: 'Reset',
+    promptReview: 'Review it before creating: anyone in the organization can write the ticket description.',
+  },
+  take: {
+    title: 'Prompt for taking tickets in {repo}',
+    hint: 'Used when taking a ticket from a plugin. Leave empty to use the repo’s {file} or the default prompt. Variables: {vars}',
+    save: 'Save',
+    defaultPrompt:
+      'Take ticket #{id}: {title}\n{url}\n\n{description}\n\nYou are on branch {branch}. Read the relevant code and propose a plan before making changes.',
   },
   branchPicker: {
     search: 'Search branches…',
@@ -86,6 +99,15 @@ export const en: Messages = {
   agents: {
     claude: 'Anthropic’s agent',
     opencode: 'Open source agent',
+    status: {
+      working: 'Working',
+      waiting: 'Waiting for you',
+      done: 'Done',
+    },
+    notify: {
+      waiting: 'Waiting for you in {session}',
+      done: 'Done in {session}',
+    },
   },
   statusBar: {
     openDiff: 'Open diff',
@@ -113,6 +135,7 @@ export const en: Messages = {
     modes: {
       working: 'Uncommitted',
       branch: 'Whole branch',
+      history: 'History',
     },
     baseHint: 'Compared against the point where the session branched off its base',
     versus: 'vs {base}',
@@ -133,6 +156,18 @@ export const en: Messages = {
     windowsPath: 'Windows path',
     emptyWorking: 'No changes since the last commit.',
     emptyBranch: 'No changes compared to {base}.',
+    emptyCommit: 'This commit changes no files.',
+    commitsHeader: 'Commits',
+    historyScope: 'Which commits to show',
+    scope: {
+      branch: 'Branch',
+      branchHint: 'Only the commits made on this branch',
+      all: 'All',
+      allHint: 'The whole history up to here',
+    },
+    loadMore: 'Load more',
+    emptyHistoryBranch: 'This branch has no commits of its own compared to {base}.',
+    emptyHistory: 'No commits yet.',
     binary: 'Binary file: the diff cannot be shown.',
     tooLarge: 'File too large to show the diff.',
     status: {
@@ -338,6 +373,7 @@ export const en: Messages = {
     unknownWorktree: '{path} is not a worktree of this repository.',
     worktreeDirty: '{name} has uncommitted changes.',
     unknownProfile: 'Unknown terminal profile: {id}',
+    promptUnsupported: '{profile} cannot receive the agent\'s initial prompt. Use PowerShell or a WSL shell.',
     worktreeMissing: 'The worktree does not appear at {path}',
     unsupportedRemote: 'This repo’s remote does not match any supported provider.',
     noAccount: 'Connect a {provider} account in Settings → Accounts to see its pull requests.',

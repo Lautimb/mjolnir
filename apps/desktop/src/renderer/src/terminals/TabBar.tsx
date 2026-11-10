@@ -7,6 +7,7 @@ import { cx } from '../ui/cx'
 import { HOST_TEXT } from '../ui/hosts'
 import { MenuDivider, MenuItem, MenuSection, popover } from '../ui/Menu'
 import { useDismiss } from '../ui/useDismiss'
+import { AgentStatusIcon } from './AgentStatusIcon'
 import { AGENTS, type Agent, type Tab } from './model'
 
 interface Props {
@@ -34,8 +35,8 @@ export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenSh
     <header className="flex h-tabbar flex-none items-stretch border-b border-line bg-surface select-none">
       <div className="flex min-w-0 [scrollbar-width:none] overflow-x-auto">
         {tabs.map((tab) => {
-          const Icon = tab.kind === 'agent' ? Sparkles : SquareTerminal
           const active = tab.id === activeId
+          const status = tab.status && t(`agents.status.${tab.status}`)
           return (
             <div
               key={tab.id}
@@ -43,11 +44,15 @@ export function TabBar({ tabs, activeId, profiles, onActivate, onClose, onOpenSh
                 'flex max-w-[220px] flex-none cursor-pointer items-center gap-2 border-r border-line pr-1 pl-3',
                 active ? 'bg-canvas text-fg shadow-[inset_0_2px_0_var(--color-accent)]' : 'text-muted hover:bg-hover hover:text-fg',
               )}
-              title={`${tab.label} · ${tab.profile.label}`}
+              title={[tab.label, tab.profile.label, status].filter(Boolean).join(' · ')}
               onClick={() => onActivate(tab.id)}
               onAuxClick={(event) => event.button === 1 && onClose(tab.id)}
             >
-              <Icon size={14} className={cx('flex-none', tab.kind === 'agent' ? 'text-accent' : HOST_TEXT[tab.profile.host.kind])} />
+              {tab.kind === 'agent' ? (
+                <AgentStatusIcon status={tab.status} size={14} label={status} />
+              ) : (
+                <SquareTerminal size={14} className={cx('flex-none', HOST_TEXT[tab.profile.host.kind])} />
+              )}
               <span className={cx('truncate', tab.exitCode !== undefined && 'line-through opacity-50')}>{tab.label}</span>
               <IconButton
                 small

@@ -1,4 +1,5 @@
 import type { Accounts } from '../accounts'
+import type { AgentStatusFiles } from '../agent-status'
 import type { Environment } from '../environment'
 import type { PluginCatalog } from '../plugins/catalog'
 import type { PluginPorts } from '../plugins/ports'
@@ -23,6 +24,7 @@ export interface Services {
   accounts: Accounts
   pulls: Pulls
   terminals: PtyManager
+  agentStatus: AgentStatusFiles
   plugins: PluginRegistry
   pluginCatalog: PluginCatalog
   pluginPorts: PluginPorts

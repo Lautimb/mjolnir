@@ -1,4 +1,4 @@
-import { compareVersions, localize, PLUGIN_SCHEME, type GrantablePermissions, type NewSessionRequest } from '@mjolnir/plugin-sdk'
+import { compareVersions, localize, PLUGIN_SCHEME, type GrantablePermissions, type NewSessionRequest, type SessionTicket } from '@mjolnir/plugin-sdk'
 import type { PluginManifest, ViewContribution } from '@mjolnir/plugin-sdk/manifest'
 import type { CatalogPlugin, PluginInfo } from '../../../shared/api'
 import { FALLBACK_LOCALE, SOURCE_LOCALE } from '../../../shared/locales'
@@ -16,13 +16,31 @@ export const MOUNTED_VIEWS = 3
 
 const MAX_ID = 200
 const MAX_BRANCH = 250
+const MAX_TITLE = 500
+const MAX_URL = 2000
+const MAX_DESCRIPTION = 8000
+
+function text(value: unknown, max: number): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined
+}
+
+function asTicket(data: unknown): SessionTicket | undefined {
+  const ticket = data as { id?: unknown; title?: unknown; url?: unknown; description?: unknown } | null
+  const id = text(ticket?.id, MAX_ID)
+  const title = text(ticket?.title, MAX_TITLE)
+  if (!id || !title) return undefined
+  const url = text(ticket?.url, MAX_URL)
+  const description = text(ticket?.description, MAX_DESCRIPTION)
+  return { id, title, ...(url && /^https?:\/\//i.test(url) && { url }), ...(description && { description }) }
+}
 
 export function asNewSession(data: unknown): NewSessionRequest | null {
-  const message = data as { type?: unknown; repoId?: unknown; branch?: unknown } | null
+  const message = data as { type?: unknown; repoId?: unknown; branch?: unknown; ticket?: unknown } | null
   if (message?.type !== 'mjolnir:newSession') return null
   const { repoId, branch } = message
   if (typeof repoId !== 'string' || typeof branch !== 'string' || !repoId || repoId.length > MAX_ID) return null
-  return { repoId, branch: branch.trim().slice(0, MAX_BRANCH) }
+  const ticket = asTicket(message.ticket)
+  return { repoId, branch: branch.trim().slice(0, MAX_BRANCH), ...(ticket && { ticket }) }
 }
 
 export function pluginOrigin(pluginId: string): string {

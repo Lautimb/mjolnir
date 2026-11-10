@@ -4,6 +4,7 @@ import { localize, type ProviderCredential } from '@mjolnir/plugin-sdk'
 import { SOURCE_LOCALE } from '../shared/locales'
 import { nextZoom } from '../shared/zoom'
 import { Accounts } from './accounts'
+import { AgentStatusFiles } from './agent-status'
 import { detectEnvironment } from './environment'
 import { registerIpc } from './ipc'
 import { PluginBackgrounds } from './plugins/backgrounds'
@@ -24,6 +25,7 @@ import { MainWindow } from './window'
 import { Workspace } from './workspace'
 
 registerPluginScheme()
+if (process.platform === 'win32') app.setAppUserModelId('dev.mjolnir.app')
 
 interface PluginDeps {
   userData: string
@@ -95,6 +97,9 @@ void app.whenReady().then(async () => {
   const store = new Store(join(userData, 'workspace.json'))
   const workspace = new Workspace(store)
   const terminals = new PtyManager((channel, id, payload) => window.send(channel, id, payload))
+  const agentStatus = new AgentStatusFiles(join(userData, 'agent-status'), (id, event) => window.send('pty:agentEvent', id, event))
+  agentStatus.start()
+  app.on('before-quit', () => agentStatus.dispose())
   const window = new MainWindow(
     environment.appHost,
     {
@@ -129,6 +134,7 @@ void app.whenReady().then(async () => {
     accounts,
     pulls: new Pulls(workspace, accounts, plugins.providers),
     terminals,
+    agentStatus,
     plugins: plugins.registry,
     pluginCatalog: plugins.catalog,
     pluginPorts: plugins.ports,

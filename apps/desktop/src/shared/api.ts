@@ -1,6 +1,8 @@
 import type {
   Account,
+  AgentEvent,
   BranchList,
+  CommitSummary,
   CompareMode,
   CreatePullRequestInput,
   DeviceCode,
@@ -28,6 +30,13 @@ export interface SpawnRequest {
   rows: number
   cwd?: string
   initialInput?: string
+  prompt?: string
+  agentStatus?: boolean
+}
+
+export interface TakePrompts {
+  app: string | null
+  repo: string | null
 }
 
 export interface SavedTab {
@@ -38,6 +47,7 @@ export interface SavedTab {
   label: string
   agent?: string
   conversation?: string
+  pristine?: true
 }
 
 export interface SavedTabs {
@@ -49,6 +59,20 @@ export interface SessionDiff {
   mode: CompareMode
   base: string | null
   from: string
+  files: FileChange[]
+}
+
+export type HistoryScope = 'branch' | 'all'
+
+export interface SessionHistory {
+  base: string | null
+  commits: CommitSummary[]
+  more: boolean
+}
+
+export interface CommitDiff {
+  from: string
+  to: string
   files: FileChange[]
 }
 
@@ -124,6 +148,8 @@ export interface MjolnirApi {
     close(): void
     isMaximized(): Promise<boolean>
     onMaximizedChange(listener: (maximized: boolean) => void): () => void
+    notify(tag: string, title: string, body: string): void
+    onNotificationClick(listener: (tag: string) => void): () => void
   }
   settings: {
     get(): Promise<Settings>
@@ -142,6 +168,8 @@ export interface MjolnirApi {
     remove(id: string): Promise<void>
     branches(id: string): Promise<BranchList>
     fetch(id: string): Promise<BranchList>
+    takePrompts(id: string): Promise<TakePrompts>
+    setTakePrompt(id: string, template: string | null): Promise<void>
   }
   worktrees: {
     list(repoId: string): Promise<Worktree[]>
@@ -173,6 +201,9 @@ export interface MjolnirApi {
   diff: {
     compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff>
     file(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile>
+    history(repoId: string, path: string, scope: HistoryScope, limit: number): Promise<SessionHistory>
+    commit(repoId: string, path: string, sha: string): Promise<CommitDiff>
+    commitFile(repoId: string, path: string, from: string, to: string, change: FileChange): Promise<DiffFile>
   }
   plugins: {
     list(): Promise<PluginInfo[]>
@@ -200,5 +231,6 @@ export interface MjolnirApi {
     kill(id: string): void
     onData(listener: (id: string, data: string) => void): () => void
     onExit(listener: (id: string, exitCode: number) => void): () => void
+    onAgentEvent(listener: (id: string, event: AgentEvent) => void): () => void
   }
 }
