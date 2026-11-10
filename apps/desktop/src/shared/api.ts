@@ -12,6 +12,7 @@ import type {
   PullRequestComment,
   PullRequestDetail,
   PullRequestFeature,
+  PullRequestMergeInput,
   PullRequestQuery,
   PullRequestReviewInput,
   PullRequestSummary,
@@ -198,6 +199,7 @@ export interface MjolnirApi {
     comments(repoId: string, number: number): Promise<PullRequestComment[]>
     comment(repoId: string, number: number, body: string): Promise<PullRequestComment>
     review(repoId: string, number: number, input: PullRequestReviewInput): Promise<void>
+    merge(repoId: string, number: number, input: PullRequestMergeInput): Promise<void>
     create(repoId: string, worktreePath: string, input: CreatePullRequestInput): Promise<PullRequestSummary>
     diff(repoId: string, number: number, base: string): Promise<PullRequestDiff>
     diffFile(repoId: string, from: string, to: string, change: FileChange): Promise<DiffFile>

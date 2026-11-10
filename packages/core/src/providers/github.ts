@@ -4,8 +4,10 @@ import type {
   CreatePullRequestInput,
   Person,
   ProviderDefinition,
+  MergeMethod,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestMergeInput,
   PullRequestQuery,
   PullRequestProvider,
   PullRequestReview,
@@ -52,12 +54,28 @@ interface GitHubPull {
   html_url: string
   created_at: string
   updated_at: string
-  head: { ref: string; sha: string }
-  base: { ref: string }
+  head: { ref: string; sha: string; repo: { full_name: string } | null }
+  base: { ref: string; repo: { full_name: string } }
+  mergeable?: boolean | null
   requested_reviewers?: GitHubUser[]
   additions?: number
   deletions?: number
   changed_files?: number
+}
+
+interface GitHubRepo {
+  allow_merge_commit?: boolean
+  allow_squash_merge?: boolean
+  allow_rebase_merge?: boolean
+}
+
+function mergeMethods(repo: GitHubRepo): MergeMethod[] {
+  const allowed: Record<MergeMethod, boolean | undefined> = {
+    merge: repo.allow_merge_commit,
+    squash: repo.allow_squash_merge,
+    rebase: repo.allow_rebase_merge,
+  }
+  return (Object.keys(allowed) as MergeMethod[]).filter((method) => allowed[method] !== false)
 }
 
 interface GitHubReview {
@@ -160,6 +178,7 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
       const payload = (await response.json().catch(() => ({}))) as { message?: string }
       throw new ProviderRequestError(response.status, payload.message ?? response.statusText)
     }
+    if (response.status === 204) return undefined as T
     return (await response.json()) as T
   }
 
@@ -187,10 +206,11 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
 
     async get(repo: RemoteRepo, number: number): Promise<PullRequestDetail> {
       const pull = await request<GitHubPull>(pullPath(repo, number))
-      const [reviews, runs, status] = await Promise.all([
+      const [reviews, runs, status, settings] = await Promise.all([
         request<GitHubReview[]>(`${pullPath(repo, number)}/reviews?per_page=100`),
         request<GitHubCheckRuns>(`${repoPath(repo)}/commits/${pull.head.sha}/check-runs?per_page=100`),
         request<GitHubCombinedStatus>(`${repoPath(repo)}/commits/${pull.head.sha}/status`),
+        request<GitHubRepo>(repoPath(repo)),
       ])
       const mapped = reviews.map(
         (review): PullRequestReview => ({
@@ -209,6 +229,8 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
         reviews: mapped,
         reviewDecision: reviewDecision(mapped, pull.requested_reviewers?.length ?? 0),
         checks: checksState(runs, status),
+        mergeable: pull.mergeable ?? null,
+        mergeMethods: mergeMethods(settings),
       }
     },
 
@@ -233,6 +255,14 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
 
     async review(repo: RemoteRepo, number: number, { verdict, body }: PullRequestReviewInput) {
       await request(`${pullPath(repo, number)}/reviews`, { method: 'POST', body: { event: REVIEW_EVENTS[verdict], body } })
+    },
+
+    async merge(repo: RemoteRepo, number: number, { method, sha, deleteBranch }: PullRequestMergeInput) {
+      const pull = await request<GitHubPull>(pullPath(repo, number))
+      await request(`${pullPath(repo, number)}/merge`, { method: 'PUT', body: { merge_method: method, sha } })
+      if (deleteBranch && pull.head.repo?.full_name === pull.base.repo.full_name) {
+        await request(`${repoPath(repo)}/git/refs/heads/${pull.head.ref.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE' })
+      }
     },
 
     headRefspec: (number: number) => `pull/${pullNumber(number)}/head`,

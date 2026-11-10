@@ -71,6 +71,8 @@ export function PullsView({ session, sideBySide, tree, onTreeChange, onOpenSetti
     window.mjolnir.pulls.forBranch(repoId, branch).then(setSessionPull, () => setSessionPull(null))
   }, [repoId, connected, branch, reload])
 
+  const refreshList = useCallback(() => setReload((value) => value + 1), [])
+
   const onCreated = useCallback((pull: PullRequestSummary) => {
     setSelection({ kind: 'pull', number: pull.number })
     setReload((value) => value + 1)
@@ -156,7 +158,7 @@ export function PullsView({ session, sideBySide, tree, onTreeChange, onOpenSetti
       </aside>
 
       {selection?.kind === 'pull' && (
-        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} canReview={context.provider.pullFeatures.includes('review')} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} />
+        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} canReview={context.provider.pullFeatures.includes('review')} canMerge={context.provider.pullFeatures.includes('merge')} onChanged={refreshList} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} />
       )}
       {selection?.kind === 'create' && branch && (
         <CreatePullRequestForm

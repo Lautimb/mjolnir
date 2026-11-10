@@ -3,6 +3,7 @@ import type {
   CredentialSource,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestMergeInput,
   PullRequestQuery,
   PullRequestReviewInput,
   PullRequestSummary,
@@ -12,11 +13,13 @@ import type { ParsedRemote, RemoteRepo } from './remote'
 export type {
   ChecksState,
   CreatePullRequestInput,
+  MergeMethod,
   Person,
   PullRequestComment,
   PullRequestDetail,
   PullRequestFeature,
   PullRequestFilter,
+  PullRequestMergeInput,
   PullRequestQuery,
   PullRequestReview,
   PullRequestReviewInput,
@@ -45,6 +48,7 @@ export interface PullRequestProvider {
   comment(repo: RemoteRepo, number: number, body: string): Promise<PullRequestComment>
   create(repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
   review?(repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
+  merge?(repo: RemoteRepo, number: number, input: PullRequestMergeInput): Promise<void>
   headRefspec(number: number): string
 }
 

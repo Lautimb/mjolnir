@@ -118,6 +118,24 @@ describe('reviews', () => {
   })
 })
 
+describe('merge', () => {
+  it('completes the pull request at the expected commit with the chosen strategy', async () => {
+    const { provider, requests } = fake({ [`${API}pullrequests/7`]: { ...pull, status: 'completed' } })
+    await provider.pulls!.merge!(credential, remote, 7, { method: 'merge', sha: 'abc', deleteBranch: true })
+    expect(requests[0]!.method).toBe('PATCH')
+    expect(JSON.parse(requests[0]!.body!.data)).toEqual({
+      status: 'completed',
+      lastMergeSourceCommit: { commitId: 'abc' },
+      completionOptions: { mergeStrategy: 'noFastForward', deleteSourceBranch: true },
+    })
+  })
+
+  it('reports conflicts as not mergeable and a pending check as unknown', () => {
+    expect(toDetail(repo, { ...pull, mergeStatus: 'conflicts' }).mergeable).toBe(false)
+    expect(toDetail(repo, { ...pull, mergeStatus: 'queued' }).mergeable).toBeNull()
+  })
+})
+
 describe('mapping', () => {
   it('maps votes to reviews and a decision', () => {
     const detail = toDetail(repo, { ...pull, status: 'completed' })

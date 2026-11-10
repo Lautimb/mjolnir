@@ -12,6 +12,7 @@ import { Note } from '../ui/EmptyState'
 import { TextArea } from '../ui/fields'
 import { Segmented } from '../ui/Segmented'
 import { Markdown } from './Markdown'
+import { MergeBox } from './MergeBox'
 import { DetailBadges } from './PullBadges'
 import { PullNumber } from './PullRow'
 
@@ -20,6 +21,8 @@ interface Props {
   number: number
   providerName: string
   canReview: boolean
+  canMerge: boolean
+  onChanged(): void
   sideBySide: boolean
   tree: boolean
   onTreeChange(tree: boolean): void
@@ -45,7 +48,7 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
   )
 }
 
-export function PullRequestDetail({ repoId, number, providerName, canReview, sideBySide, tree, onTreeChange }: Props) {
+export function PullRequestDetail({ repoId, number, providerName, canReview, canMerge, onChanged, sideBySide, tree, onTreeChange }: Props) {
   const { t } = useI18n()
   const ago = useRelativeTime()
   const [detail, setDetail] = useState<Detail | null>(null)
@@ -155,6 +158,7 @@ export function PullRequestDetail({ repoId, number, providerName, canReview, sid
           {comments.map((comment) => (
             <Comment key={comment.id} comment={comment} />
           ))}
+          {canMerge && detail.state === 'open' && <MergeBox repoId={repoId} detail={detail} onMerged={() => reload().then(onChanged)} />}
           <form
             className="flex flex-col gap-2"
             onSubmit={(event) => {

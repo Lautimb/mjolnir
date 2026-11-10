@@ -251,6 +251,28 @@ export const es = {
       requestChanges: 'Pedir cambios',
       needsComment: 'Escribí qué hay que cambiar',
     },
+    merge: {
+      title: 'Mergear',
+      ready: 'Listo para mergear',
+      checking: 'Verificando si se puede mergear…',
+      draft: 'Es un borrador: marcalo como listo para mergearlo.',
+      conflicts: 'Tiene conflictos o lo bloquea una regla del repo.',
+      unknownHead: 'No se conoce el último commit del PR.',
+      method: 'Método de merge',
+      methods: {
+        merge: 'Merge commit',
+        squash: 'Squash',
+        rebase: 'Rebase',
+      },
+      actions: {
+        merge: 'Mergear',
+        squash: 'Squash y mergear',
+        rebase: 'Rebase y mergear',
+      },
+      deleteBranch: 'Borrar {branch} al terminar',
+      merging: 'Mergeando…',
+      confirm: 'Confirmar merge en {base}',
+    },
     create: {
       title: 'Nuevo pull request',
       titleLabel: 'Título',

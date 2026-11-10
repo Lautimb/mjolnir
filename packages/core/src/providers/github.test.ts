@@ -16,8 +16,8 @@ const pull = (overrides: Record<string, unknown> = {}) => ({
   html_url: 'https://github.com/Lautimb/mjolnir/pull/7',
   created_at: '2026-11-01T00:00:00Z',
   updated_at: '2026-11-02T00:00:00Z',
-  head: { ref: 'feat/diff', sha: 'abc123' },
-  base: { ref: 'main' },
+  head: { ref: 'feat/diff', sha: 'abc123', repo: { full_name: 'Lautimb/mjolnir' } },
+  base: { ref: 'main', repo: { full_name: 'Lautimb/mjolnir' } },
   requested_reviewers: [],
   ...overrides,
 })
@@ -84,6 +84,7 @@ describe('createGitHubClient', () => {
       '/repos/Lautimb/mjolnir/pulls/7': pull({ additions: 10, deletions: 2, changed_files: 3 }),
       '/repos/Lautimb/mjolnir/commits/abc123/check-runs': { check_runs: [{ status: 'completed', conclusion: 'success' }] },
       '/repos/Lautimb/mjolnir/commits/abc123/status': { state: 'pending', total_count: 0 },
+      '/repos/Lautimb/mjolnir': { allow_merge_commit: false, allow_squash_merge: true, allow_rebase_merge: true },
     })
     expect(await createGitHubClient({ token: 't', fetch }).get(repo, 7)).toMatchObject({
       number: 7,
@@ -93,7 +94,29 @@ describe('createGitHubClient', () => {
       changedFiles: 3,
       reviewDecision: 'approved',
       checks: 'success',
+      mergeMethods: ['squash', 'rebase'],
     })
+  })
+
+  it('merges the expected head commit and deletes the branch only when it lives in the same repo', async () => {
+    const own = fakeFetch({
+      '/repos/Lautimb/mjolnir/pulls/7/merge': { merged: true },
+      '/repos/Lautimb/mjolnir/pulls/7': pull({ head: { ref: 'feat/x', sha: 'abc123', repo: { full_name: 'Lautimb/mjolnir' } } }),
+      '/repos/Lautimb/mjolnir/git/refs/heads/feat/x': null,
+    })
+    await createGitHubClient({ token: 't', fetch: own.fetch }).merge(repo, 7, { method: 'squash', sha: 'abc123', deleteBranch: true })
+    expect(own.calls.map((call) => [call.init.method, call.url.replace('https://api.github.com', ''), call.init.body && JSON.parse(String(call.init.body))])).toEqual([
+      ['GET', '/repos/Lautimb/mjolnir/pulls/7', undefined],
+      ['PUT', '/repos/Lautimb/mjolnir/pulls/7/merge', { merge_method: 'squash', sha: 'abc123' }],
+      ['DELETE', '/repos/Lautimb/mjolnir/git/refs/heads/feat/x', undefined],
+    ])
+
+    const fork = fakeFetch({
+      '/repos/Lautimb/mjolnir/pulls/7/merge': { merged: true },
+      '/repos/Lautimb/mjolnir/pulls/7': pull({ head: { ref: 'feat/x', sha: 'abc123', repo: { full_name: 'someone/mjolnir' } } }),
+    })
+    await createGitHubClient({ token: 't', fetch: fork.fetch }).merge(repo, 7, { method: 'merge', sha: 'abc123', deleteBranch: true })
+    expect(fork.calls.map((call) => call.init.method)).toEqual(['GET', 'PUT'])
   })
 
   it('posts comments and new pull requests as JSON', async () => {

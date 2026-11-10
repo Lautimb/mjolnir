@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ProviderRequestError } from '@mjolnir/core'
 import {
   matchRemote,
+  MERGE_METHODS,
   type PullRequestComment,
   type PullRequestDetail,
   type PullRequestSummary,
@@ -56,6 +57,8 @@ const detail: z.ZodType<PullRequestDetail> = z.object({
     .max(1000),
   reviewDecision: z.enum(['approved', 'changes_requested', 'review_required']).nullable(),
   checks: z.enum(['success', 'failure', 'pending']).nullable(),
+  mergeable: z.boolean().nullable().optional(),
+  mergeMethods: z.array(z.enum(MERGE_METHODS)).max(MERGE_METHODS.length).optional(),
 })
 
 const comment: z.ZodType<PullRequestComment> = z.object({
@@ -108,6 +111,9 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
               create: (repo, input) => call('pulls.create', summary, [credential, repo, input]),
               ...(features.includes('review') && {
                 review: (repo, number, input) => call('pulls.review', z.null(), [credential, repo, number, input]).then(() => undefined),
+              }),
+              ...(features.includes('merge') && {
+                merge: (repo, number, input) => call('pulls.merge', z.null(), [credential, repo, number, input]).then(() => undefined),
               }),
               headRefspec: (number) => refspec.replace('{number}', String(number)),
             }

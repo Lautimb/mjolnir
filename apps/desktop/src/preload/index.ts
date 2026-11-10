@@ -69,6 +69,7 @@ const api: MjolnirApi = {
     comments: (repoId, number) => ipcRenderer.invoke('pulls:comments', repoId, number),
     comment: (repoId, number, body) => ipcRenderer.invoke('pulls:comment', repoId, number, body),
     review: (repoId, number, input) => ipcRenderer.invoke('pulls:review', repoId, number, input),
+    merge: (repoId, number, input) => ipcRenderer.invoke('pulls:merge', repoId, number, input),
     create: (repoId, worktreePath, input) => ipcRenderer.invoke('pulls:create', repoId, worktreePath, input),
     diff: (repoId, number, base) => ipcRenderer.invoke('pulls:diff', repoId, number, base),
     diffFile: (repoId, from, to, change) => ipcRenderer.invoke('pulls:diffFile', repoId, from, to, change),

@@ -53,6 +53,8 @@ export interface PullRequestDetail extends PullRequestSummary {
   reviews: PullRequestReview[]
   reviewDecision: ReviewDecision | null
   checks: ChecksState | null
+  mergeable?: boolean | null
+  mergeMethods?: MergeMethod[]
 }
 
 export interface PullRequestComment {
@@ -63,13 +65,23 @@ export interface PullRequestComment {
   url: string
 }
 
-export const PULL_REQUEST_FEATURES = ['review'] as const
+export const PULL_REQUEST_FEATURES = ['review', 'merge'] as const
 
 export type PullRequestFeature = (typeof PULL_REQUEST_FEATURES)[number]
 
 export interface PullRequestReviewInput {
   verdict: 'approve' | 'request_changes'
   body: string
+}
+
+export const MERGE_METHODS = ['merge', 'squash', 'rebase'] as const
+
+export type MergeMethod = (typeof MERGE_METHODS)[number]
+
+export interface PullRequestMergeInput {
+  method: MergeMethod
+  sha: string
+  deleteBranch: boolean
 }
 
 export interface CreatePullRequestInput {
@@ -102,6 +114,7 @@ export interface PullRequestService {
   comment(credential: ProviderCredential, repo: RemoteRepo, number: number, body: string): Promise<PullRequestComment>
   create(credential: ProviderCredential, repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
   review?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
+  merge?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: PullRequestMergeInput): Promise<void>
 }
 
 export interface ProviderImplementation {

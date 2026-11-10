@@ -252,6 +252,28 @@ export const en: Messages = {
       requestChanges: 'Request changes',
       needsComment: 'Write what needs to change',
     },
+    merge: {
+      title: 'Merge',
+      ready: 'Ready to merge',
+      checking: 'Checking whether it can be merged…',
+      draft: 'This is a draft: mark it as ready to merge it.',
+      conflicts: 'It has conflicts or a repo rule blocks it.',
+      unknownHead: "The pull request's latest commit is unknown.",
+      method: 'Merge method',
+      methods: {
+        merge: 'Merge commit',
+        squash: 'Squash',
+        rebase: 'Rebase',
+      },
+      actions: {
+        merge: 'Merge',
+        squash: 'Squash and merge',
+        rebase: 'Rebase and merge',
+      },
+      deleteBranch: 'Delete {branch} when done',
+      merging: 'Merging…',
+      confirm: 'Confirm merge into {base}',
+    },
     create: {
       title: 'New pull request',
       titleLabel: 'Title',

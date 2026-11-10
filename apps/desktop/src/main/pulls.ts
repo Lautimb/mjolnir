@@ -3,6 +3,7 @@ import {
   type CreatePullRequestInput,
   type FileChange,
   type PullRequestQuery,
+  type PullRequestMergeInput,
   type PullRequestReviewInput,
   type PullRequestProvider,
   type RemoteRepo,
@@ -54,6 +55,13 @@ export class Pulls {
 
   comment(repoId: string, number: number, body: string) {
     return this.call(repoId, (pulls, remote) => pulls.comment(remote, number, body))
+  }
+
+  merge(repoId: string, number: number, input: PullRequestMergeInput) {
+    return this.call(repoId, (pulls, remote) => {
+      if (!pulls.merge) throw new AppError('unsupportedFeature', {})
+      return pulls.merge(remote, number, input)
+    })
   }
 
   review(repoId: string, number: number, input: PullRequestReviewInput) {

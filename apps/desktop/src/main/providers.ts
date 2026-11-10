@@ -20,7 +20,7 @@ const githubAdapter: ProviderAdapter = {
   cli: { command: 'gh', tokenArgs: (host) => ['auth', 'token', '--hostname', host] },
   deviceFlowClientId: GITHUB_OAUTH_CLIENT_ID || null,
   token: true,
-  pullFeatures: ['review'],
+  pullFeatures: ['review', 'merge'],
   connect({ token }) {
     const client = createGitHubClient({ token })
     return {

@@ -8,6 +8,8 @@ import {
   type PullRequestComment,
   type PullRequestDetail,
   type PullRequestQuery,
+  type MergeMethod,
+  type PullRequestMergeInput,
   type PullRequestReview,
   type PullRequestReviewInput,
   type PullRequestState,
@@ -43,6 +45,7 @@ export interface GitPullRequest {
   sourceRefName: string
   targetRefName: string
   lastMergeSourceCommit?: { commitId: string }
+  mergeStatus?: 'notSet' | 'queued' | 'conflicts' | 'succeeded' | 'rejectedByPolicy' | 'failure'
   reviewers?: Reviewer[]
 }
 
@@ -129,6 +132,7 @@ export function toDetail(repo: AzureRepo, pull: GitPullRequest): PullRequestDeta
     reviews: reviewers.map((reviewer) => ({ author: person(reviewer), state: reviewState(reviewer.vote), submittedAt: null })),
     reviewDecision: reviewDecision(reviewers),
     checks: null,
+    mergeable: mergeable(pull.mergeStatus),
   }
 }
 
@@ -147,6 +151,14 @@ export function toComments(repo: AzureRepo, number: number, threads: Thread[]): 
         })),
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+const MERGE_STRATEGIES: Record<MergeMethod, string> = { merge: 'noFastForward', squash: 'squash', rebase: 'rebase' }
+
+function mergeable(status: GitPullRequest['mergeStatus']): boolean | null {
+  if (status === 'succeeded') return true
+  if (status === 'conflicts' || status === 'failure' || status === 'rejectedByPolicy') return false
+  return null
 }
 
 const VOTES: Record<PullRequestReviewInput['verdict'], number> = { approve: 10, request_changes: -5 }
@@ -236,6 +248,14 @@ export function createAzureProvider(request: Request): ProviderImplementation {
         const reviewer = await me(credential, repo)
         await call(credential, 'PUT', apiUrl(repo, `pullRequests/${number}/reviewers/${segment(reviewer)}`), { vote: VOTES[verdict] })
         if (body.trim()) await postThread(credential, repo, number, body)
+      },
+      async merge(credential, remote, number, { method, sha, deleteBranch }: PullRequestMergeInput) {
+        const repo = azureRepo(remote)
+        await call(credential, 'PATCH', apiUrl(repo, `pullrequests/${number}`), {
+          status: 'completed',
+          lastMergeSourceCommit: { commitId: sha },
+          completionOptions: { mergeStrategy: MERGE_STRATEGIES[method], deleteSourceBranch: deleteBranch },
+        })
       },
     },
   }
