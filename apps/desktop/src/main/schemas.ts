@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isSafeRef, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
+import { isSafeRef, isUuid, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
 import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SavedTabs, SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
@@ -14,6 +14,7 @@ export const label = z.string().max(200)
 export const ref = z.string().refine(isSafeRef, 'unsafe git ref')
 export const pullNumber = z.number().int().positive()
 export const flag = z.boolean()
+export const notificationText = z.string().max(500)
 export const token = z.string().trim().min(1).max(1000)
 
 export const host: z.ZodType<Host> = z.discriminatedUnion('kind', [
@@ -56,7 +57,8 @@ export const spawnRequest: z.ZodType<SpawnRequest> = z.object({
   cwd: path.optional(),
   initialInput: z.string().max(1000).optional(),
   prompt: z.string().min(1).max(MAX_PROMPT).optional(),
-})
+  agentStatus: z.boolean().optional(),
+}).refine((request) => !request.agentStatus || isUuid(request.id), 'agent status needs a uuid tab id')
 
 export const promptTemplate = z.string().trim().min(1).max(MAX_PROMPT).nullable()
 
@@ -75,6 +77,7 @@ export const savedTabs: z.ZodType<SavedTabs> = z.object({
         label,
         agent: id.optional(),
         conversation: z.uuid().optional(),
+        pristine: z.literal(true).optional(),
       }),
     )
     .max(MAX_SAVED_TABS),

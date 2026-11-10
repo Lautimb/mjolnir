@@ -99,6 +99,15 @@ export const en: Messages = {
   agents: {
     claude: 'Anthropic’s agent',
     opencode: 'Open source agent',
+    status: {
+      working: 'Working',
+      waiting: 'Waiting for you',
+      done: 'Done',
+    },
+    notify: {
+      waiting: 'Waiting for you in {session}',
+      done: 'Done in {session}',
+    },
   },
   statusBar: {
     openDiff: 'Open diff',

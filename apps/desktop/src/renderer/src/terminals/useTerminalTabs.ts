@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { TerminalProfile } from '@mjolnir/core/browser'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AGENT_SETTINGS_ENV, envReference, type AgentEvent, type TerminalProfile } from '@mjolnir/core/browser'
 import type { SavedTabs } from '../../../shared/api'
-import { AGENTS, agentLaunch, wakeLaunch, type Tab } from './model'
+import { AGENTS, agentLaunch, wakeLaunch, withAgentEvent, type Tab } from './model'
 import { fromSaved, toSaved } from './persistence'
 
 export type NewTab = Omit<Tab, 'id' | 'sessionKey'>
@@ -11,8 +11,14 @@ export function useTerminalTabs() {
   const [activeBySession, setActiveBySession] = useState<Record<string, string>>({})
   const [restored, setRestored] = useState(false)
 
+  const lastSaved = useRef('')
   useEffect(() => {
-    if (restored) window.mjolnir.tabs.save(toSaved(tabs, activeBySession))
+    if (!restored) return
+    const state = toSaved(tabs, activeBySession)
+    const serialized = JSON.stringify(state)
+    if (serialized === lastSaved.current) return
+    lastSaved.current = serialized
+    window.mjolnir.tabs.save(state)
   }, [restored, tabs, activeBySession])
 
   const restore = useCallback((saved: SavedTabs, profiles: TerminalProfile[]) => {
@@ -32,7 +38,7 @@ export function useTerminalTabs() {
       current.map((tab) => {
         if (tab.id !== id || !tab.dormant) return tab
         const agent = AGENTS.find((candidate) => candidate.id === tab.agent)
-        const launch = agent && agentLaunch(agent, wakeLaunch(tab, current), () => crypto.randomUUID())
+        const launch = agent && agentLaunch(agent, wakeLaunch(tab, current), () => crypto.randomUUID(), envReference(tab.profile, AGENT_SETTINGS_ENV))
         return { ...tab, ...launch, dormant: false }
       }),
     )
@@ -47,8 +53,19 @@ export function useTerminalTabs() {
   }, [])
 
   const markExited = useCallback((id: string, exitCode: number) => {
-    setTabs((current) => current.map((tab) => (tab.id === id ? { ...tab, exitCode } : tab)))
+    setTabs((current) => current.map((tab) => (tab.id === id ? { ...tab, exitCode, status: undefined } : tab)))
   }, [])
+
+  useEffect(
+    () =>
+      window.mjolnir.pty.onAgentEvent((id: string, event: AgentEvent) => {
+        setTabs((current) => {
+          const next = current.map((tab) => (tab.id === id ? withAgentEvent(tab, event) : tab))
+          return next.some((tab, index) => tab !== current[index]) ? next : current
+        })
+      }),
+    [],
+  )
 
   const forSession = (sessionKey: string) => {
     const sessionTabs = tabs.filter((tab) => tab.sessionKey === sessionKey)

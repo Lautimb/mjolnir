@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TerminalProfile } from './profiles'
-import { MAX_PROMPT, PROMPT_ENV, promptArgument, promptEnv, renderPrompt, supportsPrompt } from './prompts'
+import { MAX_PROMPT, PROMPT_ENV, promptArgument, renderPrompt, shellEnv, supportsPrompt } from './prompts'
 
 const windows = (file: string): TerminalProfile => ({ id: file, label: file, host: { kind: 'windows' }, file, args: [] })
 const bash: TerminalProfile = { id: 'shell', label: 'bash', host: { kind: 'posix' }, file: '/bin/bash', args: ['-l'] }
@@ -95,22 +95,29 @@ describe('promptArgument', () => {
   })
 })
 
-describe('promptEnv', () => {
+describe('shellEnv', () => {
   const tricky = 'Arreglá "el login" de C:\\temp\\ & $(whoami)\n\n`ls` | echo %PATH% \\"ya\\" fin\\'
 
   it('passes the prompt untouched to posix shells and to pwsh', () => {
-    expect(promptEnv(bash, tricky, undefined)[PROMPT_ENV]).toBe(tricky)
-    expect(promptEnv(pwsh, tricky, undefined)[PROMPT_ENV]).toBe(tricky)
+    expect(shellEnv(bash, [{ name: PROMPT_ENV, value: tricky }], undefined)[PROMPT_ENV]).toBe(tricky)
+    expect(shellEnv(pwsh, [{ name: PROMPT_ENV, value: tricky }], undefined)[PROMPT_ENV]).toBe(tricky)
   })
 
   it('pre-escapes the value so Windows PowerShell 5.1 hands the native command the original prompt', () => {
     for (const prompt of [tricky, 'una sola', 'sin"espacios"', '"todo entre comillas"', 'termina en \\', 'a\\\\"b c']) {
-      expect(throughWindowsPowerShell(promptEnv(powershell, prompt, undefined)[PROMPT_ENV]!)).toEqual([prompt])
+      expect(throughWindowsPowerShell(shellEnv(powershell, [{ name: PROMPT_ENV, value: prompt }], undefined)[PROMPT_ENV]!)).toEqual([prompt])
     }
   })
 
   it('shares the variable across the WSL boundary without dropping what WSLENV already had', () => {
-    expect(promptEnv(wsl, 'x', undefined).WSLENV).toBe(PROMPT_ENV)
-    expect(promptEnv(wsl, 'x', `USERPROFILE/p:${PROMPT_ENV}/u`).WSLENV).toBe(`USERPROFILE/p:${PROMPT_ENV}`)
+    expect(shellEnv(wsl, [{ name: PROMPT_ENV, value: 'x' }], undefined).WSLENV).toBe(PROMPT_ENV)
+    expect(shellEnv(wsl, [{ name: PROMPT_ENV, value: 'x' }], `USERPROFILE/p:${PROMPT_ENV}/u`).WSLENV).toBe(`USERPROFILE/p:${PROMPT_ENV}`)
+  })
+
+  it('translates path variables across WSL and leaves them out of the PowerShell 5.1 argument escaping', () => {
+    const env = shellEnv(powershell, [{ name: 'JSON', value: '{"a":1}' }, { name: 'FILE', value: 'C:\\data\\x.json', path: true }], 'FILE/u')
+    expect(env.FILE).toBe('C:\\data\\x.json')
+    expect(throughWindowsPowerShell(env.JSON!)).toEqual(['{"a":1}'])
+    expect(env.WSLENV).toBe('JSON:FILE/p')
   })
 })

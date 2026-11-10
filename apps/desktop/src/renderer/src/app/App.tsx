@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { promptArgument, sameHost, supportsPrompt, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
+import { AGENT_SETTINGS_ENV, envReference, promptArgument, sameHost, supportsPrompt, type Repo, type TerminalProfile, type Worktree } from '@mjolnir/core/browser'
 import { readTheme, type NewSessionRequest, type NotifyKind, type PluginContext, type WorkspaceSession } from '@mjolnir/plugin-sdk'
 import { appErrorCode } from '../../../shared/errors'
 import type { Settings } from '../../../shared/settings'
@@ -22,6 +22,7 @@ import { Launchpad } from '../terminals/Launchpad'
 import { agentLaunch, type Agent } from '../terminals/model'
 import { TabBar } from '../terminals/TabBar'
 import { TerminalView } from '../terminals/TerminalView'
+import { useAgentNotifications } from '../terminals/useAgentNotifications'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
 import { cx } from '../ui/cx'
 import { LAYOUTS, MAIN_COLUMN } from './layout'
@@ -116,6 +117,19 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
     if (view === 'sessions' && activeTab?.dormant) wakeTab(activeTab.id)
   }, [view, activeTab, wakeTab])
 
+  useAgentNotifications(
+    terminals.tabs,
+    (key) => {
+      const target = sessions.get(key)
+      return target?.repo ? `${target.repo.name} · ${target.title}` : (target?.title ?? '')
+    },
+    (tab) => {
+      setActiveKey(tab.sessionKey)
+      terminals.activate(tab.sessionKey, tab.id)
+      setView('sessions')
+    },
+  )
+
   const openShell = (profile: TerminalProfile) =>
     terminals.open(session.key, { profile, label: profile.label, kind: 'shell', cwd: session.cwd })
 
@@ -128,7 +142,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       kind: 'agent',
       agent: agent.id,
       cwd: session.cwd,
-      ...agentLaunch(agent, { mode: resume ? 'latest' : 'new' }, () => crypto.randomUUID()),
+      ...agentLaunch(agent, { mode: resume ? 'latest' : 'new' }, () => crypto.randomUUID(), envReference(profile, AGENT_SETTINGS_ENV)),
     })
   }
 
@@ -165,7 +179,12 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       agent: take.agent.id,
       cwd: worktree.path,
       prompt: take.prompt,
-      ...agentLaunch(take.agent, { mode: 'new', promptArgument: promptArgument(profile) ?? undefined }, () => crypto.randomUUID()),
+      ...agentLaunch(
+        take.agent,
+        { mode: 'new', promptArgument: promptArgument(profile) ?? undefined },
+        () => crypto.randomUUID(),
+        envReference(profile, AGENT_SETTINGS_ENV),
+      ),
     })
     setView('sessions')
   }

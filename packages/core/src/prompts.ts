@@ -36,10 +36,14 @@ export function supportsPrompt(profile: TerminalProfile): boolean {
   return promptShell(profile) !== 'cmd'
 }
 
-export function promptArgument(profile: TerminalProfile): string | null {
+export function envReference(profile: TerminalProfile, name: string): string | null {
   const shell = promptShell(profile)
   if (shell === 'cmd') return null
-  return shell === 'posix' ? `"$${PROMPT_ENV}"` : `$env:${PROMPT_ENV}`
+  return shell === 'posix' ? `"$${name}"` : `$env:${name}`
+}
+
+export function promptArgument(profile: TerminalProfile): string | null {
+  return envReference(profile, PROMPT_ENV)
 }
 
 /**
@@ -51,8 +55,17 @@ function legacyNativeArgument(value: string): string {
   return /\s/.test(value) ? escaped.replace(/(\\+)$/, '$1$1') : escaped
 }
 
-export function promptEnv(profile: TerminalProfile, prompt: string, wslenv: string | undefined): Record<string, string> {
-  const value = promptShell(profile) === 'powershell' ? legacyNativeArgument(prompt) : prompt
-  const shared = (wslenv ?? '').split(':').filter((entry) => entry && entry.split('/')[0] !== PROMPT_ENV)
-  return { [PROMPT_ENV]: value, WSLENV: [...shared, PROMPT_ENV].join(':') }
+export interface ShellVar {
+  name: string
+  value: string
+  path?: boolean
+}
+
+export function shellEnv(profile: TerminalProfile, vars: ShellVar[], wslenv: string | undefined): Record<string, string> {
+  const legacy = promptShell(profile) === 'powershell'
+  const names = new Set(vars.map(({ name }) => name))
+  const shared = (wslenv ?? '').split(':').filter((entry) => entry && !names.has(entry.split('/')[0]!))
+  const values = vars.map(({ name, value, path }) => [name, legacy && !path ? legacyNativeArgument(value) : value])
+  const crossing = vars.map(({ name, path }) => (path ? `${name}/p` : name))
+  return { ...Object.fromEntries(values), WSLENV: [...shared, ...crossing].join(':') }
 }

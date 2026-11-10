@@ -98,6 +98,15 @@ export const es = {
   agents: {
     claude: 'Agente de Anthropic',
     opencode: 'Agente open source',
+    status: {
+      working: 'Trabajando',
+      waiting: 'Espera tu respuesta',
+      done: 'Terminó',
+    },
+    notify: {
+      waiting: 'Espera tu respuesta en {session}',
+      done: 'Terminó en {session}',
+    },
   },
   statusBar: {
     openDiff: 'Ver diff',

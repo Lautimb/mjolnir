@@ -22,6 +22,8 @@ const api: MjolnirApi = {
     close: () => ipcRenderer.send('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     onMaximizedChange: (listener) => subscribe('window:maximized', listener),
+    notify: (tag, title, body) => ipcRenderer.send('window:notify', tag, title, body),
+    onNotificationClick: (listener) => subscribe('window:notificationClick', listener),
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
@@ -100,6 +102,7 @@ const api: MjolnirApi = {
     kill: (id) => ipcRenderer.send('pty:kill', id),
     onData: (listener) => subscribe('pty:data', listener),
     onExit: (listener) => subscribe('pty:exit', listener),
+    onAgentEvent: (listener) => subscribe('pty:agentEvent', listener),
   },
 }
 

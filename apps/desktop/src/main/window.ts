@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, type BrowserWindowConstructorOptions } from 'electron'
+import { BrowserWindow, Notification, type BrowserWindowConstructorOptions } from 'electron'
 import type { Host } from '@mjolnir/core'
 import icon from '../../resources/icon.png?asset'
 import { TITLEBAR_HEIGHT } from '../shared/settings'
@@ -25,6 +25,7 @@ export interface WindowZoom {
 
 export class MainWindow {
   private window: BrowserWindow | null = null
+  private readonly notifications = new Set<Notification>()
 
   constructor(
     private readonly appHost: Host,
@@ -99,6 +100,24 @@ export class MainWindow {
 
   close(): void {
     this.current?.close()
+  }
+
+  notify(tag: string, title: string, body: string): void {
+    if (!Notification.isSupported()) return
+    const notification = new Notification({ title, body, icon })
+    const forget = () => this.notifications.delete(notification)
+    notification.on('click', () => {
+      forget()
+      const window = this.current
+      if (!window) return
+      if (window.isMinimized()) window.restore()
+      window.show()
+      window.focus()
+      this.send('window:notificationClick', tag)
+    })
+    notification.on('close', forget)
+    this.notifications.add(notification)
+    notification.show()
   }
 
   isMaximized(): boolean {

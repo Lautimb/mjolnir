@@ -81,6 +81,7 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, 
         cwd: tab.cwd,
         initialInput: tab.initialInput,
         prompt: tab.prompt,
+        agentStatus: tab.hooks,
       })
       .catch((error: unknown) => term.write(`\x1b[31m${describe.current(error)}\x1b[0m\r\n`))
 

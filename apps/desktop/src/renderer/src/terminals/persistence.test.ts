@@ -41,6 +41,14 @@ describe('terminal tab persistence', () => {
     })
   })
 
+  it('keeps whether the conversation never got a prompt, but not the live status', () => {
+    const agent = tab({ kind: 'agent', agent: 'claude', label: 'Claude Code', conversation: 'c0ffee00-0000-4000-8000-000000000000', pristine: true, status: 'working', hooks: true })
+    const [restored] = fromSaved(toSaved([agent], {}), [bash])
+    expect(restored).toMatchObject({ pristine: true })
+    expect(restored).not.toHaveProperty('status')
+    expect(restored).not.toHaveProperty('hooks')
+  })
+
   it('skips tabs whose profile or agent is no longer available', () => {
     const saved = toSaved([tab({ id: 'a' }), tab({ id: 'b', profile: { ...bash, id: 'zsh' } }), tab({ id: 'c', kind: 'agent' })], {})
     expect(fromSaved(saved, [bash]).map((restored) => restored.id)).toEqual(['a'])

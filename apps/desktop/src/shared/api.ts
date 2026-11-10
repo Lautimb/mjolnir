@@ -1,5 +1,6 @@
 import type {
   Account,
+  AgentEvent,
   BranchList,
   CompareMode,
   CreatePullRequestInput,
@@ -29,6 +30,7 @@ export interface SpawnRequest {
   cwd?: string
   initialInput?: string
   prompt?: string
+  agentStatus?: boolean
 }
 
 export interface TakePrompts {
@@ -44,6 +46,7 @@ export interface SavedTab {
   label: string
   agent?: string
   conversation?: string
+  pristine?: true
 }
 
 export interface SavedTabs {
@@ -130,6 +133,8 @@ export interface MjolnirApi {
     close(): void
     isMaximized(): Promise<boolean>
     onMaximizedChange(listener: (maximized: boolean) => void): () => void
+    notify(tag: string, title: string, body: string): void
+    onNotificationClick(listener: (tag: string) => void): () => void
   }
   settings: {
     get(): Promise<Settings>
@@ -208,5 +213,6 @@ export interface MjolnirApi {
     kill(id: string): void
     onData(listener: (id: string, data: string) => void): () => void
     onExit(listener: (id: string, exitCode: number) => void): () => void
+    onAgentEvent(listener: (id: string, event: AgentEvent) => void): () => void
   }
 }
