@@ -11,6 +11,7 @@ import { Button } from '../ui/Button'
 import { Note } from '../ui/EmptyState'
 import { TextArea } from '../ui/fields'
 import { Segmented } from '../ui/Segmented'
+import { Markdown } from './Markdown'
 import { DetailBadges } from './PullBadges'
 import { PullNumber } from './PullRow'
 
@@ -36,7 +37,7 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
         <strong className="text-fg">{comment.author.login}</strong>
         <span>{ago(new Date(comment.createdAt))}</span>
       </header>
-      <div className="p-3 break-words whitespace-pre-wrap">{comment.body}</div>
+      <Markdown className="p-3">{comment.body}</Markdown>
     </article>
   )
 }
