@@ -3,6 +3,7 @@ import {
   type CreatePullRequestInput,
   type FileChange,
   type PullRequestQuery,
+  type PullRequestReviewInput,
   type PullRequestProvider,
   type RemoteRepo,
 } from '@mjolnir/core'
@@ -53,6 +54,13 @@ export class Pulls {
 
   comment(repoId: string, number: number, body: string) {
     return this.call(repoId, (pulls, remote) => pulls.comment(remote, number, body))
+  }
+
+  review(repoId: string, number: number, input: PullRequestReviewInput) {
+    return this.call(repoId, (pulls, remote) => {
+      if (!pulls.review) throw new AppError('unsupportedFeature', {})
+      return pulls.review(remote, number, input)
+    })
   }
 
   async create(repoId: string, worktreePath: string, input: CreatePullRequestInput) {

@@ -9,6 +9,7 @@ import {
   type PullRequestDetail,
   type PullRequestQuery,
   type PullRequestReview,
+  type PullRequestReviewInput,
   type PullRequestState,
   type PullRequestSummary,
   type RemoteRepo,
@@ -148,6 +149,8 @@ export function toComments(repo: AzureRepo, number: number, threads: Thread[]): 
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
+const VOTES: Record<PullRequestReviewInput['verdict'], number> = { approve: 10, request_changes: -5 }
+
 const STATUS_FILTER: Record<PullRequestQuery['state'], string> = { open: 'active', closed: 'all', all: 'all' }
 
 export function createAzureProvider(request: Request): ProviderImplementation {
@@ -167,6 +170,12 @@ export function createAzureProvider(request: Request): ProviderImplementation {
     }
     return id
   }
+
+  const postThread = (credential: ProviderCredential, repo: AzureRepo, number: number, body: string) =>
+    call<Thread>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads`), {
+      comments: [{ parentCommentId: 0, content: body, commentType: 1 }],
+      status: 1,
+    })
 
   const pulls = async (credential: ProviderCredential, repo: AzureRepo, criteria: Record<string, string>) => {
     const query = Object.fromEntries(Object.entries(criteria).map(([key, value]) => [`searchCriteria.${key}`, value]))
@@ -206,10 +215,7 @@ export function createAzureProvider(request: Request): ProviderImplementation {
       },
       async comment(credential, remote, number, body) {
         const repo = azureRepo(remote)
-        const thread = await call<Thread>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads`), {
-          comments: [{ parentCommentId: 0, content: body, commentType: 1 }],
-          status: 1,
-        })
+        const thread = await postThread(credential, repo, number, body)
         const [comment] = toComments(repo, number, [{ ...thread, comments: thread.comments.map((entry) => ({ ...entry, commentType: 'text' })) }])
         if (!comment) throw new HostError('requestFailed', 'Azure DevOps did not return the comment')
         return comment
@@ -224,6 +230,12 @@ export function createAzureProvider(request: Request): ProviderImplementation {
           isDraft: input.draft,
         })
         return toSummary(repo, pull)
+      },
+      async review(credential, remote, number, { verdict, body }: PullRequestReviewInput) {
+        const repo = azureRepo(remote)
+        const reviewer = await me(credential, repo)
+        await call(credential, 'PUT', apiUrl(repo, `pullRequests/${number}/reviewers/${segment(reviewer)}`), { vote: VOTES[verdict] })
+        if (body.trim()) await postThread(credential, repo, number, body)
       },
     },
   }

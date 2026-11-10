@@ -246,6 +246,11 @@ export const es = {
     commentPlaceholder: 'Dejá un comentario…',
     comment: 'Comentar',
     commenting: 'Enviando…',
+    reviewActions: {
+      approve: 'Aprobar',
+      requestChanges: 'Pedir cambios',
+      needsComment: 'Escribí qué hay que cambiar',
+    },
     create: {
       title: 'Nuevo pull request',
       titleLabel: 'Título',
@@ -375,6 +380,7 @@ export const es = {
     promptUnsupported: '{profile} no puede recibir el prompt inicial del agente. Usá PowerShell o una shell de WSL.',
     worktreeMissing: 'El worktree no aparece en {path}',
     unsupportedRemote: 'El remoto de este repo no corresponde a ningún proveedor soportado.',
+    unsupportedFeature: 'El proveedor de este repo no permite esta acción desde Mjolnir.',
     noAccount: 'Conectá una cuenta de {provider} en Ajustes → Cuentas para ver sus PRs.',
     providerUnauthorized: 'La cuenta de {provider} ya no tiene acceso. Volvé a conectarla en Ajustes → Cuentas.',
     providerRequestFailed: 'El proveedor respondió {status}: {message}',

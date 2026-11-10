@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isSafeRef, isUuid, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery } from '@mjolnir/core'
+import { isSafeRef, isUuid, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestQuery, type PullRequestReviewInput } from '@mjolnir/core'
 import { isOriginPattern, isRepoGlob, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SavedTabs, SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
@@ -51,6 +51,11 @@ export const createPullRequest: z.ZodType<CreatePullRequestInput> = z.object({
 })
 
 export const comment = z.string().trim().min(1).max(65_536)
+
+export const reviewInput: z.ZodType<PullRequestReviewInput> = z
+  .object({ verdict: z.enum(['approve', 'request_changes']), body: z.string().trim().max(65_536) })
+  .strict()
+  .refine((input) => input.verdict === 'approve' || input.body.length > 0, 'requesting changes needs a comment')
 
 export const spawnRequest: z.ZodType<SpawnRequest> = z.object({
   id,

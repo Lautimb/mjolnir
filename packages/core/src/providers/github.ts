@@ -9,6 +9,7 @@ import type {
   PullRequestQuery,
   PullRequestProvider,
   PullRequestReview,
+  PullRequestReviewInput,
   PullRequestSummary,
   ReviewDecision,
 } from './types'
@@ -99,6 +100,8 @@ function summary(pull: GitHubPull): PullRequestSummary {
   }
 }
 
+const REVIEW_EVENTS: Record<PullRequestReviewInput['verdict'], string> = { approve: 'APPROVE', request_changes: 'REQUEST_CHANGES' }
+
 const REVIEW_STATES: Record<GitHubReview['state'], PullRequestReview['state']> = {
   APPROVED: 'approved',
   CHANGES_REQUESTED: 'changes_requested',
@@ -168,7 +171,7 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
   const viewer = () => request<GitHubUser>('/user')
   const login = () => (viewerLogin ??= viewer().then((user) => user.login))
 
-  const provider: PullRequestProvider = {
+  const provider = {
     async list(repo: RemoteRepo, { filter, state }: PullRequestQuery) {
       const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=${encodeURIComponent(state)}&sort=updated&direction=desc&per_page=100`)
       if (filter === 'all') return pulls.map(summary)
@@ -228,8 +231,12 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
       return summary(await request<GitHubPull>(`${repoPath(repo)}/pulls`, { method: 'POST', body: { head, base, title, body, draft } }))
     },
 
+    async review(repo: RemoteRepo, number: number, { verdict, body }: PullRequestReviewInput) {
+      await request(`${pullPath(repo, number)}/reviews`, { method: 'POST', body: { event: REVIEW_EVENTS[verdict], body } })
+    },
+
     headRefspec: (number: number) => `pull/${pullNumber(number)}/head`,
-  }
+  } satisfies PullRequestProvider
 
   return { ...provider, viewer }
 }

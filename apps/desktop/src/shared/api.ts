@@ -11,7 +11,9 @@ import type {
   Host,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestFeature,
   PullRequestQuery,
+  PullRequestReviewInput,
   PullRequestSummary,
   RemoteRepo,
   Repo,
@@ -85,6 +87,7 @@ export interface ProviderInfo {
   displayName: string
   cli: string | null
   methods: AuthMethod[]
+  pullFeatures: PullRequestFeature[]
 }
 
 export interface PullRequestContext {
@@ -194,6 +197,7 @@ export interface MjolnirApi {
     forBranch(repoId: string, branch: string): Promise<PullRequestSummary | null>
     comments(repoId: string, number: number): Promise<PullRequestComment[]>
     comment(repoId: string, number: number, body: string): Promise<PullRequestComment>
+    review(repoId: string, number: number, input: PullRequestReviewInput): Promise<void>
     create(repoId: string, worktreePath: string, input: CreatePullRequestInput): Promise<PullRequestSummary>
     diff(repoId: string, number: number, base: string): Promise<PullRequestDiff>
     diffFile(repoId: string, from: string, to: string, change: FileChange): Promise<DiffFile>

@@ -93,6 +93,31 @@ describe('Azure DevOps provider', () => {
   })
 })
 
+describe('reviews', () => {
+  it('votes as the signed-in user and posts the comment as a thread', async () => {
+    const { provider, requests } = fake({
+      'https://dev.azure.com/acme/_apis/connectionData': { authenticatedUser: { id: 'me-1' } },
+      [`${API}pullRequests/7/reviewers/me-1`]: { vote: -5 },
+      [`${API}pullRequests/7/threads`]: { id: 1, comments: [] },
+    })
+    await provider.pulls!.review!(credential, remote, 7, { verdict: 'request_changes', body: 'Please add tests' })
+    expect(requests.slice(1).map((req) => [req.method, req.url.split('?')[0]!.replace(API, ''), JSON.parse(req.body!.data)])).toEqual([
+      ['PUT', 'pullRequests/7/reviewers/me-1', { vote: -5 }],
+      ['POST', 'pullRequests/7/threads', { comments: [{ parentCommentId: 0, content: 'Please add tests', commentType: 1 }], status: 1 }],
+    ])
+  })
+
+  it('approves without posting a thread when there is no comment', async () => {
+    const { provider, requests } = fake({
+      'https://dev.azure.com/acme/_apis/connectionData': { authenticatedUser: { id: 'me-1' } },
+      [`${API}pullRequests/7/reviewers/me-1`]: { vote: 10 },
+    })
+    await provider.pulls!.review!(credential, remote, 7, { verdict: 'approve', body: '' })
+    expect(requests.map((req) => req.method)).toEqual(['GET', 'PUT'])
+    expect(JSON.parse(requests[1]!.body!.data)).toEqual({ vote: 10 })
+  })
+})
+
 describe('mapping', () => {
   it('maps votes to reviews and a decision', () => {
     const detail = toDetail(repo, { ...pull, status: 'completed' })

@@ -1,5 +1,5 @@
 import { createGitHubClient, github, GITHUB_HOST, type ParsedRemote, type ProviderDefinition, type PullRequestProvider, type RemoteRepo } from '@mjolnir/core'
-import type { ProviderCredential, ProviderIdentity } from '@mjolnir/plugin-sdk'
+import type { ProviderCredential, ProviderIdentity, PullRequestFeature } from '@mjolnir/plugin-sdk'
 import type { AuthMethod } from '../shared/api'
 
 export interface ProviderAdapter {
@@ -8,6 +8,7 @@ export interface ProviderAdapter {
   cli: { command: string; tokenArgs(host: string): string[] } | null
   deviceFlowClientId: string | null
   token: boolean
+  pullFeatures: readonly PullRequestFeature[]
   connect(credential: ProviderCredential): { pulls: PullRequestProvider | null; identify(): Promise<ProviderIdentity> }
 }
 
@@ -19,6 +20,7 @@ const githubAdapter: ProviderAdapter = {
   cli: { command: 'gh', tokenArgs: (host) => ['auth', 'token', '--hostname', host] },
   deviceFlowClientId: GITHUB_OAUTH_CLIENT_ID || null,
   token: true,
+  pullFeatures: ['review'],
   connect({ token }) {
     const client = createGitHubClient({ token })
     return {

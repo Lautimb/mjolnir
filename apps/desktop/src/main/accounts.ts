@@ -43,6 +43,7 @@ export class Accounts {
       displayName: adapter.definition.displayName,
       cli: adapter.cli?.command ?? null,
       methods: authMethods(adapter),
+      pullFeatures: [...adapter.pullFeatures],
     }))
   }
 

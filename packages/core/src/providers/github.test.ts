@@ -110,6 +110,17 @@ describe('createGitHubClient', () => {
     ])
   })
 
+  it('submits reviews with the GitHub event for each verdict', async () => {
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls/7/reviews': { id: 1 } })
+    const client = createGitHubClient({ token: 't', fetch })
+    await client.review(repo, 7, { verdict: 'approve', body: '' })
+    await client.review(repo, 7, { verdict: 'request_changes', body: 'Fix the tests' })
+    expect(calls.map((call) => [call.url.replace('https://api.github.com', ''), JSON.parse(String(call.init.body))])).toEqual([
+      ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'APPROVE', body: '' }],
+      ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'REQUEST_CHANGES', body: 'Fix the tests' }],
+    ])
+  })
+
   it('sends only the known fields when creating a pull request', async () => {
     const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls': pull() })
     const input = { head: 'feat/x', base: 'main', title: 'T', body: 'B', draft: false, maintainer_can_modify: false }

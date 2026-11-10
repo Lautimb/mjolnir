@@ -4,6 +4,7 @@ import type {
   PullRequestComment,
   PullRequestDetail,
   PullRequestQuery,
+  PullRequestReviewInput,
   PullRequestSummary,
 } from '@mjolnir/plugin-sdk/providers'
 import type { ParsedRemote, RemoteRepo } from './remote'
@@ -14,9 +15,11 @@ export type {
   Person,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestFeature,
   PullRequestFilter,
   PullRequestQuery,
   PullRequestReview,
+  PullRequestReviewInput,
   PullRequestState,
   PullRequestStateFilter,
   PullRequestSummary,
@@ -41,6 +44,7 @@ export interface PullRequestProvider {
   comments(repo: RemoteRepo, number: number): Promise<PullRequestComment[]>
   comment(repo: RemoteRepo, number: number, body: string): Promise<PullRequestComment>
   create(repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
+  review?(repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
   headRefspec(number: number): string
 }
 

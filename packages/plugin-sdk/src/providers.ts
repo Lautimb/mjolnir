@@ -63,6 +63,15 @@ export interface PullRequestComment {
   url: string
 }
 
+export const PULL_REQUEST_FEATURES = ['review'] as const
+
+export type PullRequestFeature = (typeof PULL_REQUEST_FEATURES)[number]
+
+export interface PullRequestReviewInput {
+  verdict: 'approve' | 'request_changes'
+  body: string
+}
+
 export interface CreatePullRequestInput {
   head: string
   base: string
@@ -92,6 +101,7 @@ export interface PullRequestService {
   comments(credential: ProviderCredential, repo: RemoteRepo, number: number): Promise<PullRequestComment[]>
   comment(credential: ProviderCredential, repo: RemoteRepo, number: number, body: string): Promise<PullRequestComment>
   create(credential: ProviderCredential, repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
+  review?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
 }
 
 export interface ProviderImplementation {

@@ -35,7 +35,7 @@ Un plugin es una carpeta (en desarrollo) o un `.mjp` (zip) con un `mjolnir-plugi
           { "host": "{org}.visualstudio.com", "path": "{project}/_git/{repo}", "repo": { "host": "dev.azure.com", "owner": "{org}/{project}", "name": "{repo}" } }
         ],
         "auth": { "token": true, "cli": { "command": "az", "args": ["account", "get-access-token", "--resource", "499b84ac-1321-427f-aa17-267ca6975798", "--query", "accessToken", "-o", "tsv"] } },
-        "pulls": { "refspec": "refs/pull/{number}/merge" }
+        "pulls": { "refspec": "refs/pull/{number}/merge", "features": ["review"] }
       }
     ],
     "commands": [{ "id": "open-work-item", "title": "%commands.openWorkItem%" }]
@@ -114,6 +114,7 @@ Si más adelante hace falta, el camino es un `main` opcional en `utilityProcess`
 - **Auth**: `token` (PAT, guardado con `safeStorage`) y/o `cli` declarado. El comando lo corre el host en los hosts de repos, como `gh auth token`, y se muestra en la aprobación de permisos ("Ejecutar `az account get-access-token …`"); cambiarlo en una actualización vuelve a pedir aprobación.
 - **Credencial**: cada llamada recibe `{ host, token, source }`; el plugin decide el header (por ejemplo PAT → Basic, CLI → Bearer). Un `HostError('unauthorized')` del plugin se trata como cuenta vencida.
 - **Diff de PRs**: `pulls.refspec` (`refs/pull/{number}/merge`) es lo que el host trae con git para armar el diff.
+- **Acciones opcionales**: `pulls.features` declara qué métodos opcionales implementa el proveedor (`review`: aprobar o pedir cambios). La UI solo muestra la acción si está declarada, y el host solo la reenvía en ese caso. Declarar una feature hace que versiones viejas de Mjolnir rechacen el manifest, así que hay que subir `engines.mjolnir` cuando se publique.
 - En el plugin: `mjolnir.providers.register('azure-devops', { identify, pulls: { list, get, forBranch, comments, comment, create } })`. Si el host llama antes de que registre, el SDK espera hasta 10 s.
 
 ## API del host (v1)

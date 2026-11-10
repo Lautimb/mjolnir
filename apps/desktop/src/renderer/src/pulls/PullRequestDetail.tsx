@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ExternalLink } from 'lucide-react'
-import type { FileChange, PullRequestComment, PullRequestDetail as Detail } from '@mjolnir/core/browser'
+import { useCallback, useEffect, useState } from 'react'
+import { Check, ExternalLink, MessageSquareWarning } from 'lucide-react'
+import type { FileChange, PullRequestComment, PullRequestDetail as Detail, PullRequestReviewInput } from '@mjolnir/core/browser'
 import type { PullRequestDiff } from '../../../shared/api'
 import { DiffBrowser } from '../diff/DiffBrowser'
 import { Stats } from '../diff/Stats'
@@ -19,12 +19,15 @@ interface Props {
   repoId: string
   number: number
   providerName: string
+  canReview: boolean
   sideBySide: boolean
   tree: boolean
   onTreeChange(tree: boolean): void
 }
 
 type Tab = 'conversation' | 'files'
+
+type Action = 'comment' | PullRequestReviewInput['verdict']
 
 const DETAIL = 'flex min-h-0 min-w-0 flex-col'
 
@@ -42,7 +45,7 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
   )
 }
 
-export function PullRequestDetail({ repoId, number, providerName, sideBySide, tree, onTreeChange }: Props) {
+export function PullRequestDetail({ repoId, number, providerName, canReview, sideBySide, tree, onTreeChange }: Props) {
   const { t } = useI18n()
   const ago = useRelativeTime()
   const [detail, setDetail] = useState<Detail | null>(null)
@@ -50,20 +53,26 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
   const [diff, setDiff] = useState<PullRequestDiff | null>(null)
   const [tab, setTab] = useState<Tab>('conversation')
   const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
+  const [sending, setSending] = useState<Action | null>(null)
   const [error, setError] = useState<unknown>(null)
   const { pulls } = window.mjolnir
+
+  const reload = useCallback(
+    () =>
+      Promise.all([pulls.get(repoId, number), pulls.comments(repoId, number)]).then(([nextDetail, nextComments]) => {
+        setDetail(nextDetail)
+        setComments(nextComments)
+      }, setError),
+    [repoId, number],
+  )
 
   useEffect(() => {
     setDetail(null)
     setComments([])
     setDiff(null)
     setError(null)
-    Promise.all([pulls.get(repoId, number), pulls.comments(repoId, number)]).then(([nextDetail, nextComments]) => {
-      setDetail(nextDetail)
-      setComments(nextComments)
-    }, setError)
-  }, [repoId, number])
+    void reload()
+  }, [reload])
 
   useEffect(() => {
     if (tab !== 'files' || !detail || diff) return
@@ -75,24 +84,31 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
     [repoId, diff],
   )
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    if (!draft.trim()) return
-    setSending(true)
+  const send = async (action: Action) => {
+    const body = draft.trim()
+    setSending(action)
     try {
-      const created = await pulls.comment(repoId, number, draft.trim())
-      setComments((current) => [...current, created])
+      if (action === 'comment') {
+        const created = await pulls.comment(repoId, number, body)
+        setComments((current) => [...current, created])
+      } else {
+        await pulls.review(repoId, number, { verdict: action, body })
+        await reload()
+      }
       setDraft('')
+      setError(null)
     } catch (err) {
       setError(err)
     } finally {
-      setSending(false)
+      setSending(null)
     }
   }
 
   if (!detail) {
     return <div className={DETAIL}>{error !== null && <Note error>{describeError(t, error)}</Note>}</div>
   }
+
+  const reviewable = canReview && detail.state === 'open'
 
   return (
     <div className={DETAIL}>
@@ -139,11 +155,35 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
           {comments.map((comment) => (
             <Comment key={comment.id} comment={comment} />
           ))}
-          <form className="flex flex-col items-end gap-2" onSubmit={submit}>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (draft.trim()) void send('comment')
+            }}
+          >
             <TextArea placeholder={t('pulls.commentPlaceholder')} value={draft} onChange={(event) => setDraft(event.target.value)} rows={4} />
-            <Button type="submit" variant="primary" disabled={sending || !draft.trim()}>
-              {sending ? t('pulls.commenting') : t('pulls.comment')}
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {reviewable && (
+                <>
+                  <Button
+                    title={draft.trim() ? undefined : t('pulls.reviewActions.needsComment')}
+                    disabled={sending !== null || !draft.trim()}
+                    onClick={() => void send('request_changes')}
+                  >
+                    <MessageSquareWarning size={14} />
+                    {sending === 'request_changes' ? t('pulls.commenting') : t('pulls.reviewActions.requestChanges')}
+                  </Button>
+                  <Button disabled={sending !== null} onClick={() => void send('approve')}>
+                    <Check size={14} />
+                    {sending === 'approve' ? t('pulls.commenting') : t('pulls.reviewActions.approve')}
+                  </Button>
+                </>
+              )}
+              <Button type="submit" variant="primary" disabled={sending !== null || !draft.trim()}>
+                {sending === 'comment' ? t('pulls.commenting') : t('pulls.comment')}
+              </Button>
+            </div>
           </form>
         </div>
       ) : (

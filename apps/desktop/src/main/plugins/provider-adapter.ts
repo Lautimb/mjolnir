@@ -86,6 +86,7 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
   }
 
   const refspec = contribution.pulls?.refspec
+  const features = contribution.pulls?.features ?? []
 
   return {
     definition: { id, displayName, matchRemote: (remote) => matchRemote(contribution.remotes, id, remote) },
@@ -93,6 +94,7 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
     cli: contribution.auth.cli ? { command: contribution.auth.cli.command, tokenArgs: () => contribution.auth.cli!.args } : null,
     deviceFlowClientId: null,
     token: contribution.auth.token,
+    pullFeatures: features,
     connect(credential) {
       return {
         identify: () => call('identify', identity, [credential]),
@@ -104,6 +106,9 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
               comments: (repo, number) => call('pulls.comments', z.array(comment).max(5000), [credential, repo, number]),
               comment: (repo, number, body) => call('pulls.comment', comment, [credential, repo, number, body]),
               create: (repo, input) => call('pulls.create', summary, [credential, repo, input]),
+              ...(features.includes('review') && {
+                review: (repo, number, input) => call('pulls.review', z.null(), [credential, repo, number, input]).then(() => undefined),
+              }),
               headRefspec: (number) => refspec.replace('{number}', String(number)),
             }
           : null,

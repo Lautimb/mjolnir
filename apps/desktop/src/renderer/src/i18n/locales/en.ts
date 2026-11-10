@@ -247,6 +247,11 @@ export const en: Messages = {
     commentPlaceholder: 'Leave a comment…',
     comment: 'Comment',
     commenting: 'Sending…',
+    reviewActions: {
+      approve: 'Approve',
+      requestChanges: 'Request changes',
+      needsComment: 'Write what needs to change',
+    },
     create: {
       title: 'New pull request',
       titleLabel: 'Title',
@@ -376,6 +381,7 @@ export const en: Messages = {
     promptUnsupported: '{profile} cannot receive the agent\'s initial prompt. Use PowerShell or a WSL shell.',
     worktreeMissing: 'The worktree does not appear at {path}',
     unsupportedRemote: 'This repo’s remote does not match any supported provider.',
+    unsupportedFeature: "This repo's provider does not support this action from Mjolnir.",
     noAccount: 'Connect a {provider} account in Settings → Accounts to see its pull requests.',
     providerUnauthorized: 'The {provider} account no longer has access. Reconnect it in Settings → Accounts.',
     providerRequestFailed: 'The provider responded {status}: {message}',
