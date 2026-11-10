@@ -23,7 +23,7 @@ Hecho y en `main`:
 | --- | --- |
 | Sesiones | Repos por host (Windows, WSL, posix), descubrimiento de repos, sesiones = worktrees en `~/.mjolnir/worktrees/<repo>/<branch>` del lado del host del repo |
 | Terminales | Pestañas por sesión con node-pty, perfiles detectados por plataforma, lanzador de agentes |
-| Diff | Vista por sesión (cambios sin commitear o toda la branch contra su base) con Monaco, badge de archivos cambiados |
+| Diff | Vista por sesión (cambios sin commitear o toda la branch contra su base) con Monaco, badge de archivos cambiados. Historial de commits de la sesión (los propios de la branch o todo, paginado) con el diff de cada commit contra su primer padre |
 | PRs | GitHub: listar (míos / para revisar / todos × abiertos / cerrados / todos), detalle, comentarios, crear (publica la branch si hace falta), diff del PR |
 | Cuentas | Modelo de cuentas por proveedor: CLI (`gh`), token, device flow (pendiente de Client ID). Secretos con `safeStorage` |
 | i18n | Español (fuente de verdad) e inglés, tipado, preparado para más idiomas |
@@ -130,6 +130,7 @@ Cuenta, PRs y Boards hechos en `plugins/azure-devops`. Falta probarlo contra una
 - `GITHUB_OAUTH_CLIENT_ID` en `apps/desktop/src/main/providers.ts`: registrar una OAuth App con Device Flow para habilitar "Conectar con el navegador".
 - Validar `accounts.json` al cargarlo (hoy se confía en el archivo).
 - Separar los datos del modo dev de los de la app instalada para que no compartan caché.
+- Diff: blame por línea (estilo GitLens) sobre el historial.
 
 ## Comandos
 

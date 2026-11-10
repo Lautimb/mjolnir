@@ -134,6 +134,7 @@ export const es = {
     modes: {
       working: 'Sin commitear',
       branch: 'Toda la branch',
+      history: 'Historial',
     },
     baseHint: 'Se compara contra el punto donde la sesión se separó de su base',
     versus: 'vs {base}',
@@ -154,6 +155,18 @@ export const es = {
     windowsPath: 'Ruta de Windows',
     emptyWorking: 'Sin cambios desde el último commit.',
     emptyBranch: 'Sin cambios respecto de {base}.',
+    emptyCommit: 'Este commit no cambia archivos.',
+    commitsHeader: 'Commits',
+    historyScope: 'Qué commits mostrar',
+    scope: {
+      branch: 'Branch',
+      branchHint: 'Solo los commits hechos en esta branch',
+      all: 'Todo',
+      allHint: 'Todo el historial hasta acá',
+    },
+    loadMore: 'Cargar más',
+    emptyHistoryBranch: 'Esta branch no tiene commits propios respecto de {base}.',
+    emptyHistory: 'Todavía no hay commits.',
     binary: 'Archivo binario: no se puede mostrar el diff.',
     tooLarge: 'Archivo demasiado grande para mostrar el diff.',
     status: {

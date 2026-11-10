@@ -21,6 +21,27 @@ export interface Comparison {
 
 export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
+export interface CommitSummary {
+  sha: string
+  parents: string[]
+  author: string
+  date: number
+  subject: string
+}
+
+const FIELD = '\x1f'
+const LOG_FORMAT = ['%H', '%P', '%an', '%at', '%s'].join('%x1f')
+
+export function parseLog(output: string): CommitSummary[] {
+  return output
+    .split('\0')
+    .filter(Boolean)
+    .map((record) => {
+      const [sha = '', parents = '', author = '', date = '', ...subject] = record.split(FIELD)
+      return { sha, parents: parents.split(' ').filter(Boolean), author, date: Number(date) * 1000, subject: subject.join(FIELD) }
+    })
+}
+
 type NameStatus = Pick<FileChange, 'path' | 'oldPath' | 'status'>
 
 export function parseNameStatus(output: string): NameStatus[] {
@@ -91,6 +112,17 @@ export function createDiff(exec: Exec) {
         .filter(Boolean)
         .map((path): FileChange => ({ path, status: 'untracked', additions: null, deletions: null, binary: false }))
       return [...tracked, ...added].sort((a, b) => a.path.localeCompare(b.path))
+    },
+
+    async log(dir: string, since: string | null, limit: number): Promise<CommitSummary[]> {
+      const exclude = since && since !== EMPTY_TREE ? ['--not', safeRef(since)] : []
+      if (!(await tryGit(dir, 'rev-parse', '--verify', '--quiet', 'HEAD'))) return []
+      return parseLog(await git(dir, 'log', '-z', `--format=${LOG_FORMAT}`, `--max-count=${limit}`, 'HEAD', ...exclude))
+    },
+
+    async parent(dir: string, sha: string): Promise<string> {
+      const [, first] = (await git(dir, 'rev-list', '--parents', '--max-count=1', safeRef(sha))).trim().split(' ')
+      return first ?? EMPTY_TREE
     },
 
     async original(dir: string, from: string, change: FileChange): Promise<string> {

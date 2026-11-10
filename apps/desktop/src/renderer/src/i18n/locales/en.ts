@@ -135,6 +135,7 @@ export const en: Messages = {
     modes: {
       working: 'Uncommitted',
       branch: 'Whole branch',
+      history: 'History',
     },
     baseHint: 'Compared against the point where the session branched off its base',
     versus: 'vs {base}',
@@ -155,6 +156,18 @@ export const en: Messages = {
     windowsPath: 'Windows path',
     emptyWorking: 'No changes since the last commit.',
     emptyBranch: 'No changes compared to {base}.',
+    emptyCommit: 'This commit changes no files.',
+    commitsHeader: 'Commits',
+    historyScope: 'Which commits to show',
+    scope: {
+      branch: 'Branch',
+      branchHint: 'Only the commits made on this branch',
+      all: 'All',
+      allHint: 'The whole history up to here',
+    },
+    loadMore: 'Load more',
+    emptyHistoryBranch: 'This branch has no commits of its own compared to {base}.',
+    emptyHistory: 'No commits yet.',
     binary: 'Binary file: the diff cannot be shown.',
     tooLarge: 'File too large to show the diff.',
     status: {

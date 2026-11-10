@@ -3,7 +3,7 @@ import { mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createDiff, EMPTY_TREE, parseNameStatus, parseNumstat } from './diff'
+import { createDiff, EMPTY_TREE, parseLog, parseNameStatus, parseNumstat } from './diff'
 import { createHostExec } from './node'
 import { UnsafeRefError } from './refs'
 
@@ -28,6 +28,16 @@ describe('parseNumstat', () => {
       'new.ts': { additions: 0, deletions: 0, binary: false },
       'logo.png': { additions: null, deletions: null, binary: true },
     })
+  })
+})
+
+describe('parseLog', () => {
+  it('reads -z records with parents, unix dates and subjects', () => {
+    const output = ['a1\x1fb2 c3\x1fAna\x1f1700000000\x1fMerge branch', 'b2\x1f\x1fBeto\x1f1600000000\x1froot: first'].join('\0')
+    expect(parseLog(output)).toEqual([
+      { sha: 'a1', parents: ['b2', 'c3'], author: 'Ana', date: 1_700_000_000_000, subject: 'Merge branch' },
+      { sha: 'b2', parents: [], author: 'Beto', date: 1_600_000_000_000, subject: 'root: first' },
+    ])
   })
 })
 
@@ -120,6 +130,50 @@ describe('createDiff between two refs', () => {
   })
 })
 
+describe('createDiff history', () => {
+  let root: string
+  const diff = createDiff(createHostExec({ kind: 'posix' }))
+  const run = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
+  const commit = (file: string, message: string) => {
+    writeFileSync(path.join(root, file), `${message}\n`)
+    run('add', '-A')
+    run('-c', 'user.email=t@t', '-c', 'user.name=Tester', 'commit', '-q', '-m', message)
+  }
+
+  beforeAll(() => {
+    root = realpathSync(mkdtempSync(path.join(tmpdir(), 'mjolnir-log-')))
+    run('init', '-q', '-b', 'main')
+    commit('a.ts', 'first')
+    commit('b.ts', 'second')
+    run('switch', '-q', '-c', 'feature')
+    commit('c.ts', 'third')
+    commit('d.ts', 'fourth')
+  })
+
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  it('lists commits newest first, only the ones after the given point', async () => {
+    expect((await diff.log(root, 'main', 10)).map((commit) => commit.subject)).toEqual(['fourth', 'third'])
+    expect((await diff.log(root, null, 3)).map((commit) => commit.subject)).toEqual(['fourth', 'third', 'second'])
+    expect((await diff.log(root, null, 10))[0]).toMatchObject({ author: 'Tester', parents: [run('rev-parse', 'HEAD~1')] })
+  })
+
+  it('diffs a commit against its first parent, and the root commit against the empty tree', async () => {
+    const [third, , first] = await diff.log(root, null, 10).then((commits) => commits.slice(1))
+    const parent = await diff.parent(root, third!.sha)
+    expect(parent).toBe(run('rev-parse', 'main'))
+    expect((await diff.files(root, parent, third!.sha)).map((file) => file.path)).toEqual(['c.ts'])
+    expect(await diff.parent(root, first!.sha)).toBe(EMPTY_TREE)
+    expect((await diff.files(root, EMPTY_TREE, first!.sha)).map((file) => file.path)).toEqual(['a.ts'])
+  })
+
+  it('returns no history for a repository without commits', async () => {
+    const fresh = path.join(root, 'fresh')
+    execFileSync('git', ['init', '-q', '-b', 'main', fresh])
+    expect(await diff.log(fresh, null, 10)).toEqual([])
+  })
+})
+
 describe('createDiff with refs coming from outside', () => {
   it('refuses refs git would read as options before running anything', async () => {
     const calls: string[][] = []
@@ -127,6 +181,8 @@ describe('createDiff with refs coming from outside', () => {
     const change = { path: 'a.ts', status: 'modified', additions: 1, deletions: 0, binary: false } as const
     await expect(diff.original('/repo', '--output=/tmp/pwned', change)).rejects.toThrow(UnsafeRefError)
     await expect(diff.files('/repo', 'HEAD', '--upload-pack=evil')).rejects.toThrow(UnsafeRefError)
+    await expect(diff.log('/repo', '--all', 10)).rejects.toThrow(UnsafeRefError)
+    await expect(diff.parent('/repo', '--output=/tmp/pwned')).rejects.toThrow(UnsafeRefError)
     expect(calls).toEqual([])
   })
 })

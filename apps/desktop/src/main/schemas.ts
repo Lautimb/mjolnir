@@ -24,6 +24,9 @@ export const host: z.ZodType<Host> = z.discriminatedUnion('kind', [
 ])
 
 export const compareMode = z.enum(['working', 'branch'])
+export const historyScope = z.enum(['branch', 'all'])
+export const MAX_HISTORY = 5000
+export const historyLimit = z.number().int().min(1).max(MAX_HISTORY)
 
 export const fileChange: z.ZodType<FileChange> = z.object({
   path,

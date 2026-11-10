@@ -2,6 +2,7 @@ import type {
   Account,
   AgentEvent,
   BranchList,
+  CommitSummary,
   CompareMode,
   CreatePullRequestInput,
   DeviceCode,
@@ -58,6 +59,20 @@ export interface SessionDiff {
   mode: CompareMode
   base: string | null
   from: string
+  files: FileChange[]
+}
+
+export type HistoryScope = 'branch' | 'all'
+
+export interface SessionHistory {
+  base: string | null
+  commits: CommitSummary[]
+  more: boolean
+}
+
+export interface CommitDiff {
+  from: string
+  to: string
   files: FileChange[]
 }
 
@@ -186,6 +201,9 @@ export interface MjolnirApi {
   diff: {
     compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff>
     file(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile>
+    history(repoId: string, path: string, scope: HistoryScope, limit: number): Promise<SessionHistory>
+    commit(repoId: string, path: string, sha: string): Promise<CommitDiff>
+    commitFile(repoId: string, path: string, from: string, to: string, change: FileChange): Promise<DiffFile>
   }
   plugins: {
     list(): Promise<PluginInfo[]>

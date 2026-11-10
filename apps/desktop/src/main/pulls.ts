@@ -9,7 +9,7 @@ import {
 import type { DiffFile, PullRequestContext, PullRequestDiff } from '../shared/api'
 import { AppError } from '../shared/errors'
 import type { Accounts } from './accounts'
-import { diffContent } from './diff-content'
+import { diffBetweenRefs } from './diff-content'
 import type { ProviderRegistry } from './providers'
 import type { Workspace } from './workspace'
 
@@ -73,10 +73,8 @@ export class Pulls {
   }
 
   async diffFile(repoId: string, from: string, to: string, change: FileChange): Promise<DiffFile> {
-    if (change.binary) return { kind: 'binary' }
     const { repo, diff } = this.workspace.open(repoId)
-    const [original, modified] = await Promise.all([diff.original(repo.path, from, change), diff.modified(repo.path, to, change)])
-    return diffContent(original, modified)
+    return diffBetweenRefs(diff, repo.path, from, to, change)
   }
 
   private async call<T>(repoId: string, action: (pulls: PullRequestProvider, remote: RemoteRepo) => Promise<T>) {

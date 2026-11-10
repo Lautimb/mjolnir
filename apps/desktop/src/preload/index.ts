@@ -75,6 +75,9 @@ const api: MjolnirApi = {
   diff: {
     compare: (repoId, path, mode) => ipcRenderer.invoke('diff:compare', repoId, path, mode),
     file: (repoId, path, from, change) => ipcRenderer.invoke('diff:file', repoId, path, from, change),
+    history: (repoId, path, scope, limit) => ipcRenderer.invoke('diff:history', repoId, path, scope, limit),
+    commit: (repoId, path, sha) => ipcRenderer.invoke('diff:commit', repoId, path, sha),
+    commitFile: (repoId, path, from, to, change) => ipcRenderer.invoke('diff:commitFile', repoId, path, from, to, change),
   },
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),

@@ -24,9 +24,9 @@ import {
   type Repo,
   type Worktree,
 } from '@mjolnir/core'
-import type { DiffFile, SessionDiff, TakePrompts } from '../shared/api'
+import type { CommitDiff, DiffFile, HistoryScope, SessionDiff, SessionHistory, TakePrompts } from '../shared/api'
 import { AppError } from '../shared/errors'
-import { diffContent, MAX_DIFF_BYTES } from './diff-content'
+import { diffBetweenRefs, diffContent, MAX_DIFF_BYTES } from './diff-content'
 import type { Store } from './store'
 
 const sessionKey = (repoId: string, path: string) => `${repoId}::${path}`
@@ -116,9 +116,35 @@ export class Workspace {
   async compare(repoId: string, path: string, mode: CompareMode): Promise<SessionDiff> {
     const { repo, diff } = this.open(repoId)
     await this.worktree(repoId, path)
-    const base = this.store.sessionBase(sessionKey(repoId, path)) ?? (await this.git(repo).defaultBase(repo.path))
+    const base = await this.sessionBase(repo, path)
     const from = await diff.resolveFrom(path, mode, base)
     return { mode, base, from, files: await diff.files(path, from) }
+  }
+
+  async history(repoId: string, path: string, scope: HistoryScope, limit: number): Promise<SessionHistory> {
+    const { repo, diff } = this.open(repoId)
+    await this.worktree(repoId, path)
+    const base = await this.sessionBase(repo, path)
+    const since = scope === 'branch' && base ? await diff.resolveFrom(path, 'branch', base) : null
+    const commits = await diff.log(path, since, limit + 1)
+    return { base, commits: commits.slice(0, limit), more: commits.length > limit }
+  }
+
+  async commitDiff(repoId: string, path: string, sha: string): Promise<CommitDiff> {
+    const { diff } = this.open(repoId)
+    await this.worktree(repoId, path)
+    const from = await diff.parent(path, sha)
+    return { from, to: sha, files: await diff.files(path, from, sha) }
+  }
+
+  async commitFile(repoId: string, path: string, from: string, to: string, change: FileChange): Promise<DiffFile> {
+    const { diff } = this.open(repoId)
+    await this.worktree(repoId, path)
+    return diffBetweenRefs(diff, path, from, to, change)
+  }
+
+  private async sessionBase(repo: Repo, path: string): Promise<string | null> {
+    return this.store.sessionBase(sessionKey(repo.id, path)) ?? (await this.git(repo).defaultBase(repo.path))
   }
 
   async diffFile(repoId: string, path: string, from: string, change: FileChange): Promise<DiffFile> {
