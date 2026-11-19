@@ -2,9 +2,11 @@ import { z } from 'zod'
 import { ProviderRequestError } from '@mjolnir/core'
 import {
   matchRemote,
+  MERGE_METHODS,
   type PullRequestComment,
   type PullRequestDetail,
   type PullRequestSummary,
+  type PullRequestThread,
   type ProviderIdentity,
   type ProviderMethod,
 } from '@mjolnir/plugin-sdk'
@@ -56,6 +58,8 @@ const detail: z.ZodType<PullRequestDetail> = z.object({
     .max(1000),
   reviewDecision: z.enum(['approved', 'changes_requested', 'review_required']).nullable(),
   checks: z.enum(['success', 'failure', 'pending']).nullable(),
+  mergeable: z.boolean().nullable().optional(),
+  mergeMethods: z.array(z.enum(MERGE_METHODS)).max(MERGE_METHODS.length).optional(),
 })
 
 const comment: z.ZodType<PullRequestComment> = z.object({
@@ -64,6 +68,14 @@ const comment: z.ZodType<PullRequestComment> = z.object({
   body: text,
   createdAt: z.string().max(100),
   url: z.url({ protocol: /^https?$/ }),
+})
+
+const thread: z.ZodType<PullRequestThread> = z.object({
+  id: z.string().max(200),
+  path: z.string().min(1).max(4096),
+  line: z.number().int().positive(),
+  side: z.enum(['left', 'right']),
+  comments: z.array(comment).max(1000),
 })
 
 export function pluginProviderAdapter(pluginId: string, contribution: ProviderContribution, displayName: string, invoke: Invoke): ProviderAdapter {
@@ -86,6 +98,7 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
   }
 
   const refspec = contribution.pulls?.refspec
+  const features = contribution.pulls?.features ?? []
 
   return {
     definition: { id, displayName, matchRemote: (remote) => matchRemote(contribution.remotes, id, remote) },
@@ -93,6 +106,7 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
     cli: contribution.auth.cli ? { command: contribution.auth.cli.command, tokenArgs: () => contribution.auth.cli!.args } : null,
     deviceFlowClientId: null,
     token: contribution.auth.token,
+    pullFeatures: features,
     connect(credential) {
       return {
         identify: () => call('identify', identity, [credential]),
@@ -104,6 +118,17 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
               comments: (repo, number) => call('pulls.comments', z.array(comment).max(5000), [credential, repo, number]),
               comment: (repo, number, body) => call('pulls.comment', comment, [credential, repo, number, body]),
               create: (repo, input) => call('pulls.create', summary, [credential, repo, input]),
+              ...(features.includes('review') && {
+                review: (repo, number, input) => call('pulls.review', z.null(), [credential, repo, number, input]).then(() => undefined),
+              }),
+              ...(features.includes('inlineComments') && {
+                threads: (repo, number) => call('pulls.threads', z.array(thread).max(5000), [credential, repo, number]),
+                commentOnLine: (repo, number, input) => call('pulls.commentOnLine', thread, [credential, repo, number, input]),
+                reply: (repo, number, threadId, body) => call('pulls.reply', comment, [credential, repo, number, threadId, body]),
+              }),
+              ...(features.includes('merge') && {
+                merge: (repo, number, input) => call('pulls.merge', z.null(), [credential, repo, number, input]).then(() => undefined),
+              }),
               headRefspec: (number) => refspec.replace('{number}', String(number)),
             }
           : null,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checksState, createGitHubClient, github, ProviderRequestError, reviewDecision } from './github'
+import { checksState, createGitHubClient, github, ProviderRequestError, reviewDecision, toThreads } from './github'
 import { parseRemoteUrl } from './remote'
 import type { PullRequestReview } from './types'
 
@@ -16,8 +16,8 @@ const pull = (overrides: Record<string, unknown> = {}) => ({
   html_url: 'https://github.com/Lautimb/mjolnir/pull/7',
   created_at: '2026-11-01T00:00:00Z',
   updated_at: '2026-11-02T00:00:00Z',
-  head: { ref: 'feat/diff', sha: 'abc123' },
-  base: { ref: 'main' },
+  head: { ref: 'feat/diff', sha: 'abc123', repo: { full_name: 'Lautimb/mjolnir' } },
+  base: { ref: 'main', repo: { full_name: 'Lautimb/mjolnir' } },
   requested_reviewers: [],
   ...overrides,
 })
@@ -84,6 +84,7 @@ describe('createGitHubClient', () => {
       '/repos/Lautimb/mjolnir/pulls/7': pull({ additions: 10, deletions: 2, changed_files: 3 }),
       '/repos/Lautimb/mjolnir/commits/abc123/check-runs': { check_runs: [{ status: 'completed', conclusion: 'success' }] },
       '/repos/Lautimb/mjolnir/commits/abc123/status': { state: 'pending', total_count: 0 },
+      '/repos/Lautimb/mjolnir': { allow_merge_commit: false, allow_squash_merge: true, allow_rebase_merge: true },
     })
     expect(await createGitHubClient({ token: 't', fetch }).get(repo, 7)).toMatchObject({
       number: 7,
@@ -93,7 +94,29 @@ describe('createGitHubClient', () => {
       changedFiles: 3,
       reviewDecision: 'approved',
       checks: 'success',
+      mergeMethods: ['squash', 'rebase'],
     })
+  })
+
+  it('merges the expected head commit and deletes the branch only when it lives in the same repo', async () => {
+    const own = fakeFetch({
+      '/repos/Lautimb/mjolnir/pulls/7/merge': { merged: true },
+      '/repos/Lautimb/mjolnir/pulls/7': pull({ head: { ref: 'feat/x', sha: 'abc123', repo: { full_name: 'Lautimb/mjolnir' } } }),
+      '/repos/Lautimb/mjolnir/git/refs/heads/feat/x': null,
+    })
+    await createGitHubClient({ token: 't', fetch: own.fetch }).merge(repo, 7, { method: 'squash', sha: 'abc123', deleteBranch: true })
+    expect(own.calls.map((call) => [call.init.method, call.url.replace('https://api.github.com', ''), call.init.body && JSON.parse(String(call.init.body))])).toEqual([
+      ['GET', '/repos/Lautimb/mjolnir/pulls/7', undefined],
+      ['PUT', '/repos/Lautimb/mjolnir/pulls/7/merge', { merge_method: 'squash', sha: 'abc123' }],
+      ['DELETE', '/repos/Lautimb/mjolnir/git/refs/heads/feat/x', undefined],
+    ])
+
+    const fork = fakeFetch({
+      '/repos/Lautimb/mjolnir/pulls/7/merge': { merged: true },
+      '/repos/Lautimb/mjolnir/pulls/7': pull({ head: { ref: 'feat/x', sha: 'abc123', repo: { full_name: 'someone/mjolnir' } } }),
+    })
+    await createGitHubClient({ token: 't', fetch: fork.fetch }).merge(repo, 7, { method: 'merge', sha: 'abc123', deleteBranch: true })
+    expect(fork.calls.map((call) => call.init.method)).toEqual(['GET', 'PUT'])
   })
 
   it('posts comments and new pull requests as JSON', async () => {
@@ -108,6 +131,44 @@ describe('createGitHubClient', () => {
       ['POST', { body: 'LGTM' }],
       ['POST', { head: 'feat/x', base: 'main', title: 'T', body: 'B', draft: true }],
     ])
+  })
+
+  it('submits reviews with the GitHub event for each verdict', async () => {
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls/7/reviews': { id: 1 } })
+    const client = createGitHubClient({ token: 't', fetch })
+    await client.review(repo, 7, { verdict: 'approve', body: '' })
+    await client.review(repo, 7, { verdict: 'request_changes', body: 'Fix the tests' })
+    expect(calls.map((call) => [call.url.replace('https://api.github.com', ''), JSON.parse(String(call.init.body))])).toEqual([
+      ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'APPROVE', body: '' }],
+      ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'REQUEST_CHANGES', body: 'Fix the tests' }],
+    ])
+  })
+
+  it('groups review comments into line threads, leaving out outdated ones', () => {
+    const base = { user: { login: 'ana' }, body: 'x', created_at: 't', html_url: 'u' }
+    const threads = toThreads([
+      { ...base, id: 1, path: 'src/a.ts', line: 12, side: 'RIGHT' },
+      { ...base, id: 2, path: 'src/a.ts', line: 12, side: 'RIGHT', in_reply_to_id: 1, body: 'reply' },
+      { ...base, id: 3, path: 'src/b.ts', line: null, side: 'RIGHT' },
+      { ...base, id: 4, path: 'src/b.ts', line: 3, side: 'LEFT' },
+    ])
+    expect(threads.map((thread) => [thread.id, thread.path, thread.line, thread.side, thread.comments.map((entry) => entry.body)])).toEqual([
+      ['1', 'src/a.ts', 12, 'right', ['x', 'reply']],
+      ['4', 'src/b.ts', 3, 'left', ['x']],
+    ])
+  })
+
+  it('comments on a line of the head commit and replies to the thread root', async () => {
+    const created = { id: 9, user: { login: 'ana' }, body: 'nit', created_at: 't', html_url: 'u', path: 'a.ts', line: 4, side: 'RIGHT' }
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls/7/comments': created })
+    const client = createGitHubClient({ token: 't', fetch })
+    expect(await client.commentOnLine(repo, 7, { path: 'a.ts', line: 4, side: 'right', commitSha: 'abc123', body: 'nit' })).toMatchObject({ id: '9', line: 4, side: 'right' })
+    await client.reply(repo, 7, '9', 'done')
+    expect(calls.map((call) => [call.url.replace('https://api.github.com', ''), JSON.parse(String(call.init.body))])).toEqual([
+      ['/repos/Lautimb/mjolnir/pulls/7/comments', { body: 'nit', commit_id: 'abc123', path: 'a.ts', line: 4, side: 'RIGHT' }],
+      ['/repos/Lautimb/mjolnir/pulls/7/comments/9/replies', { body: 'done' }],
+    ])
+    await expect(client.reply(repo, 7, '../../x', 'done')).rejects.toThrow(RangeError)
   })
 
   it('sends only the known fields when creating a pull request', async () => {

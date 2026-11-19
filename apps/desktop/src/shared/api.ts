@@ -9,10 +9,15 @@ import type {
   DiscoveredRepos,
   FileChange,
   Host,
+  LineCommentInput,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestFeature,
+  PullRequestMergeInput,
   PullRequestQuery,
+  PullRequestReviewInput,
   PullRequestSummary,
+  PullRequestThread,
   RemoteRepo,
   Repo,
   TerminalProfile,
@@ -85,6 +90,7 @@ export interface ProviderInfo {
   displayName: string
   cli: string | null
   methods: AuthMethod[]
+  pullFeatures: PullRequestFeature[]
 }
 
 export interface PullRequestContext {
@@ -194,6 +200,11 @@ export interface MjolnirApi {
     forBranch(repoId: string, branch: string): Promise<PullRequestSummary | null>
     comments(repoId: string, number: number): Promise<PullRequestComment[]>
     comment(repoId: string, number: number, body: string): Promise<PullRequestComment>
+    review(repoId: string, number: number, input: PullRequestReviewInput): Promise<void>
+    merge(repoId: string, number: number, input: PullRequestMergeInput): Promise<void>
+    threads(repoId: string, number: number): Promise<PullRequestThread[]>
+    commentOnLine(repoId: string, number: number, input: LineCommentInput): Promise<PullRequestThread>
+    reply(repoId: string, number: number, threadId: string, body: string): Promise<PullRequestComment>
     create(repoId: string, worktreePath: string, input: CreatePullRequestInput): Promise<PullRequestSummary>
     diff(repoId: string, number: number, base: string): Promise<PullRequestDiff>
     diffFile(repoId: string, from: string, to: string, change: FileChange): Promise<DiffFile>

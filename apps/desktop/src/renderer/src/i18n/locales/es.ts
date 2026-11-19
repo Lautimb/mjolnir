@@ -131,6 +131,10 @@ export const es = {
   },
   diff: {
     pickSession: 'Elegí una sesión en el panel para ver sus cambios.',
+    comments: plural({
+      one: '{count} comentario',
+      other: '{count} comentarios',
+    }),
     modes: {
       working: 'Sin commitear',
       branch: 'Toda la branch',
@@ -246,6 +250,36 @@ export const es = {
     commentPlaceholder: 'Dejá un comentario…',
     comment: 'Comentar',
     commenting: 'Enviando…',
+    threads: {
+      reply: 'Responder',
+    },
+    reviewActions: {
+      approve: 'Aprobar',
+      requestChanges: 'Pedir cambios',
+      needsComment: 'Escribí qué hay que cambiar',
+    },
+    merge: {
+      title: 'Mergear',
+      ready: 'Listo para mergear',
+      checking: 'Verificando si se puede mergear…',
+      draft: 'Es un borrador: marcalo como listo para mergearlo.',
+      conflicts: 'Tiene conflictos o lo bloquea una regla del repo.',
+      unknownHead: 'No se conoce el último commit del PR.',
+      method: 'Método de merge',
+      methods: {
+        merge: 'Merge commit',
+        squash: 'Squash',
+        rebase: 'Rebase',
+      },
+      actions: {
+        merge: 'Mergear',
+        squash: 'Squash y mergear',
+        rebase: 'Rebase y mergear',
+      },
+      deleteBranch: 'Borrar {branch} al terminar',
+      merging: 'Mergeando…',
+      confirm: 'Confirmar merge en {base}',
+    },
     create: {
       title: 'Nuevo pull request',
       titleLabel: 'Título',
@@ -375,6 +409,7 @@ export const es = {
     promptUnsupported: '{profile} no puede recibir el prompt inicial del agente. Usá PowerShell o una shell de WSL.',
     worktreeMissing: 'El worktree no aparece en {path}',
     unsupportedRemote: 'El remoto de este repo no corresponde a ningún proveedor soportado.',
+    unsupportedFeature: 'El proveedor de este repo no permite esta acción desde Mjolnir.',
     noAccount: 'Conectá una cuenta de {provider} en Ajustes → Cuentas para ver sus PRs.',
     providerUnauthorized: 'La cuenta de {provider} ya no tiene acceso. Volvé a conectarla en Ajustes → Cuentas.',
     providerRequestFailed: 'El proveedor respondió {status}: {message}',

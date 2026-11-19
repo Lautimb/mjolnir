@@ -10,7 +10,7 @@ const contribution: ProviderContribution = {
   defaultHost: 'dev.azure.com',
   remotes: [{ host: 'dev.azure.com', path: '{org}/{project}/_git/{repo}', repo: { owner: '{org}/{project}', name: '{repo}' } }],
   auth: { token: true, cli: { command: 'az', args: ['account', 'get-access-token'] } },
-  pulls: { refspec: 'refs/pull/{number}/merge' },
+  pulls: { refspec: 'refs/pull/{number}/merge', features: [] },
 }
 
 const credential = { host: 'dev.azure.com', token: 't', source: 'token' as const }
@@ -50,6 +50,18 @@ describe('pluginProviderAdapter', () => {
     expect(await pulls.list(repo, { filter: 'all', state: 'open' })).toEqual([summary])
     expect(calls).toEqual([['azure-devops', 'pulls.list', credential, repo, { filter: 'all', state: 'open' }]])
     expect(pulls.headRefspec(3)).toBe('refs/pull/3/merge')
+  })
+
+  it('only exposes reviews when the manifest declares the feature', async () => {
+    expect(adapter(async () => null).connect(credential).pulls!.review).toBeUndefined()
+    const calls: unknown[][] = []
+    const reviewing = pluginProviderAdapter('azure', { ...contribution, pulls: { refspec: 'refs/pull/{number}/merge', features: ['review'] } }, 'Azure DevOps', async (_provider, method, params) => {
+      calls.push([method, ...params])
+      return null
+    })
+    expect(reviewing.pullFeatures).toEqual(['review'])
+    await reviewing.connect(credential).pulls!.review!(repo, 3, { verdict: 'approve', body: '' })
+    expect(calls).toEqual([['pulls.review', credential, repo, 3, { verdict: 'approve', body: '' }]])
   })
 
   it('rejects responses that do not match the types, so the UI never sees them', async () => {

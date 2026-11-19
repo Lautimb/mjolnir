@@ -27,7 +27,7 @@
             "args": ["account", "get-access-token", "--resource", "499b84ac-1321-427f-aa17-267ca6975798", "--query", "accessToken", "-o", "tsv"]
           }
         },
-        "pulls": { "refspec": "refs/pull/{number}/merge" }
+        "pulls": { "refspec": "refs/pull/{number}/merge", "features": ["review", "merge", "inlineComments"] }
       }
     ]
   },

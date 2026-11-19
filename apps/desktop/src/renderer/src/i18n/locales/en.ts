@@ -132,6 +132,10 @@ export const en: Messages = {
   },
   diff: {
     pickSession: 'Pick a session in the panel to see its changes.',
+    comments: plural({
+      one: '{count} comment',
+      other: '{count} comments',
+    }),
     modes: {
       working: 'Uncommitted',
       branch: 'Whole branch',
@@ -247,6 +251,36 @@ export const en: Messages = {
     commentPlaceholder: 'Leave a comment…',
     comment: 'Comment',
     commenting: 'Sending…',
+    threads: {
+      reply: 'Reply',
+    },
+    reviewActions: {
+      approve: 'Approve',
+      requestChanges: 'Request changes',
+      needsComment: 'Write what needs to change',
+    },
+    merge: {
+      title: 'Merge',
+      ready: 'Ready to merge',
+      checking: 'Checking whether it can be merged…',
+      draft: 'This is a draft: mark it as ready to merge it.',
+      conflicts: 'It has conflicts or a repo rule blocks it.',
+      unknownHead: "The pull request's latest commit is unknown.",
+      method: 'Merge method',
+      methods: {
+        merge: 'Merge commit',
+        squash: 'Squash',
+        rebase: 'Rebase',
+      },
+      actions: {
+        merge: 'Merge',
+        squash: 'Squash and merge',
+        rebase: 'Rebase and merge',
+      },
+      deleteBranch: 'Delete {branch} when done',
+      merging: 'Merging…',
+      confirm: 'Confirm merge into {base}',
+    },
     create: {
       title: 'New pull request',
       titleLabel: 'Title',
@@ -376,6 +410,7 @@ export const en: Messages = {
     promptUnsupported: '{profile} cannot receive the agent\'s initial prompt. Use PowerShell or a WSL shell.',
     worktreeMissing: 'The worktree does not appear at {path}',
     unsupportedRemote: 'This repo’s remote does not match any supported provider.',
+    unsupportedFeature: "This repo's provider does not support this action from Mjolnir.",
     noAccount: 'Connect a {provider} account in Settings → Accounts to see its pull requests.',
     providerUnauthorized: 'The {provider} account no longer has access. Reconnect it in Settings → Accounts.',
     providerRequestFailed: 'The provider responded {status}: {message}',

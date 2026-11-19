@@ -4,12 +4,18 @@ import type {
   CreatePullRequestInput,
   Person,
   ProviderDefinition,
+  MergeMethod,
+  DiffSide,
+  LineCommentInput,
   PullRequestComment,
   PullRequestDetail,
+  PullRequestMergeInput,
   PullRequestQuery,
   PullRequestProvider,
   PullRequestReview,
+  PullRequestReviewInput,
   PullRequestSummary,
+  PullRequestThread,
   ReviewDecision,
 } from './types'
 
@@ -51,12 +57,28 @@ interface GitHubPull {
   html_url: string
   created_at: string
   updated_at: string
-  head: { ref: string; sha: string }
-  base: { ref: string }
+  head: { ref: string; sha: string; repo: { full_name: string } | null }
+  base: { ref: string; repo: { full_name: string } }
+  mergeable?: boolean | null
   requested_reviewers?: GitHubUser[]
   additions?: number
   deletions?: number
   changed_files?: number
+}
+
+interface GitHubRepo {
+  allow_merge_commit?: boolean
+  allow_squash_merge?: boolean
+  allow_rebase_merge?: boolean
+}
+
+function mergeMethods(repo: GitHubRepo): MergeMethod[] {
+  const allowed: Record<MergeMethod, boolean | undefined> = {
+    merge: repo.allow_merge_commit,
+    squash: repo.allow_squash_merge,
+    rebase: repo.allow_rebase_merge,
+  }
+  return (Object.keys(allowed) as MergeMethod[]).filter((method) => allowed[method] !== false)
 }
 
 interface GitHubReview {
@@ -71,6 +93,28 @@ interface GitHubComment {
   body: string
   created_at: string
   html_url: string
+}
+
+interface GitHubReviewComment extends GitHubComment {
+  path: string
+  line: number | null
+  side: 'LEFT' | 'RIGHT'
+  in_reply_to_id?: number
+}
+
+const SIDES: Record<GitHubReviewComment['side'], DiffSide> = { LEFT: 'left', RIGHT: 'right' }
+
+export function toThreads(comments: GitHubReviewComment[]): PullRequestThread[] {
+  const threads = new Map<number, PullRequestThread>()
+  for (const entry of comments) {
+    if (entry.in_reply_to_id === undefined && entry.line !== null) {
+      threads.set(entry.id, { id: String(entry.id), path: entry.path, line: entry.line, side: SIDES[entry.side], comments: [comment(entry)] })
+    }
+  }
+  for (const entry of comments) {
+    if (entry.in_reply_to_id !== undefined) threads.get(entry.in_reply_to_id)?.comments.push(comment(entry))
+  }
+  return [...threads.values()]
 }
 
 interface GitHubCheckRuns {
@@ -98,6 +142,8 @@ function summary(pull: GitHubPull): PullRequestSummary {
     updatedAt: pull.updated_at,
   }
 }
+
+const REVIEW_EVENTS: Record<PullRequestReviewInput['verdict'], string> = { approve: 'APPROVE', request_changes: 'REQUEST_CHANGES' }
 
 const REVIEW_STATES: Record<GitHubReview['state'], PullRequestReview['state']> = {
   APPROVED: 'approved',
@@ -157,6 +203,7 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
       const payload = (await response.json().catch(() => ({}))) as { message?: string }
       throw new ProviderRequestError(response.status, payload.message ?? response.statusText)
     }
+    if (response.status === 204) return undefined as T
     return (await response.json()) as T
   }
 
@@ -168,7 +215,7 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
   const viewer = () => request<GitHubUser>('/user')
   const login = () => (viewerLogin ??= viewer().then((user) => user.login))
 
-  const provider: PullRequestProvider = {
+  const provider = {
     async list(repo: RemoteRepo, { filter, state }: PullRequestQuery) {
       const pulls = await request<GitHubPull[]>(`${repoPath(repo)}/pulls?state=${encodeURIComponent(state)}&sort=updated&direction=desc&per_page=100`)
       if (filter === 'all') return pulls.map(summary)
@@ -184,10 +231,11 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
 
     async get(repo: RemoteRepo, number: number): Promise<PullRequestDetail> {
       const pull = await request<GitHubPull>(pullPath(repo, number))
-      const [reviews, runs, status] = await Promise.all([
+      const [reviews, runs, status, settings] = await Promise.all([
         request<GitHubReview[]>(`${pullPath(repo, number)}/reviews?per_page=100`),
         request<GitHubCheckRuns>(`${repoPath(repo)}/commits/${pull.head.sha}/check-runs?per_page=100`),
         request<GitHubCombinedStatus>(`${repoPath(repo)}/commits/${pull.head.sha}/status`),
+        request<GitHubRepo>(repoPath(repo)),
       ])
       const mapped = reviews.map(
         (review): PullRequestReview => ({
@@ -206,6 +254,8 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
         reviews: mapped,
         reviewDecision: reviewDecision(mapped, pull.requested_reviewers?.length ?? 0),
         checks: checksState(runs, status),
+        mergeable: pull.mergeable ?? null,
+        mergeMethods: mergeMethods(settings),
       }
     },
 
@@ -228,8 +278,38 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
       return summary(await request<GitHubPull>(`${repoPath(repo)}/pulls`, { method: 'POST', body: { head, base, title, body, draft } }))
     },
 
+    async review(repo: RemoteRepo, number: number, { verdict, body }: PullRequestReviewInput) {
+      await request(`${pullPath(repo, number)}/reviews`, { method: 'POST', body: { event: REVIEW_EVENTS[verdict], body } })
+    },
+
+    async merge(repo: RemoteRepo, number: number, { method, sha, deleteBranch }: PullRequestMergeInput) {
+      const pull = await request<GitHubPull>(pullPath(repo, number))
+      await request(`${pullPath(repo, number)}/merge`, { method: 'PUT', body: { merge_method: method, sha } })
+      if (deleteBranch && pull.head.repo?.full_name === pull.base.repo.full_name) {
+        await request(`${repoPath(repo)}/git/refs/heads/${pull.head.ref.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE' })
+      }
+    },
+
+    async threads(repo: RemoteRepo, number: number) {
+      return toThreads(await request<GitHubReviewComment[]>(`${pullPath(repo, number)}/comments?per_page=100`))
+    },
+
+    async commentOnLine(repo: RemoteRepo, number: number, { path, line, side, commitSha, body }: LineCommentInput) {
+      const created = await request<GitHubReviewComment>(`${pullPath(repo, number)}/comments`, {
+        method: 'POST',
+        body: { body, commit_id: commitSha, path, line, side: side === 'left' ? 'LEFT' : 'RIGHT' },
+      })
+      return { id: String(created.id), path, line, side, comments: [comment(created)] }
+    },
+
+    async reply(repo: RemoteRepo, number: number, threadId: string, body: string) {
+      const root = Number(threadId)
+      if (!Number.isSafeInteger(root) || root <= 0) throw new RangeError(`Invalid thread id: ${threadId}`)
+      return comment(await request<GitHubComment>(`${pullPath(repo, number)}/comments/${root}/replies`, { method: 'POST', body: { body } }))
+    },
+
     headRefspec: (number: number) => `pull/${pullNumber(number)}/head`,
-  }
+  } satisfies PullRequestProvider
 
   return { ...provider, viewer }
 }

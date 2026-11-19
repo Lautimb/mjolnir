@@ -1,6 +1,8 @@
 import {
   HostError,
   type CreatePullRequestInput,
+  type DiffSide,
+  type LineCommentInput,
   type Person,
   type ProviderCredential,
   type ProviderIdentity,
@@ -8,9 +10,13 @@ import {
   type PullRequestComment,
   type PullRequestDetail,
   type PullRequestQuery,
+  type MergeMethod,
+  type PullRequestMergeInput,
   type PullRequestReview,
+  type PullRequestReviewInput,
   type PullRequestState,
   type PullRequestSummary,
+  type PullRequestThread,
   type RemoteRepo,
   type ReviewDecision,
 } from '@mjolnir/plugin-sdk'
@@ -42,6 +48,7 @@ export interface GitPullRequest {
   sourceRefName: string
   targetRefName: string
   lastMergeSourceCommit?: { commitId: string }
+  mergeStatus?: 'notSet' | 'queued' | 'conflicts' | 'succeeded' | 'rejectedByPolicy' | 'failure'
   reviewers?: Reviewer[]
 }
 
@@ -54,10 +61,16 @@ interface Comment {
   isDeleted?: boolean
 }
 
+interface FilePosition {
+  line: number
+  offset: number
+}
+
 export interface Thread {
   id: number
   comments: Comment[]
   isDeleted?: boolean
+  threadContext?: { filePath: string; rightFileStart?: FilePosition; leftFileStart?: FilePosition } | null
 }
 
 export interface AzureRepo {
@@ -128,25 +141,50 @@ export function toDetail(repo: AzureRepo, pull: GitPullRequest): PullRequestDeta
     reviews: reviewers.map((reviewer) => ({ author: person(reviewer), state: reviewState(reviewer.vote), submittedAt: null })),
     reviewDecision: reviewDecision(reviewers),
     checks: null,
+    mergeable: mergeable(pull.mergeStatus),
   }
+}
+
+function threadComments(repo: AzureRepo, number: number, thread: Thread): PullRequestComment[] {
+  return thread.comments
+    .filter((comment) => comment.commentType === 'text' && !comment.isDeleted && comment.content)
+    .map((comment) => ({
+      id: `${thread.id}/${comment.id}`,
+      author: person(comment.author),
+      body: comment.content!,
+      createdAt: comment.publishedDate,
+      url: `${repoUrl(repo)}/pullrequest/${number}?discussionId=${thread.id}`,
+    }))
 }
 
 export function toComments(repo: AzureRepo, number: number, threads: Thread[]): PullRequestComment[] {
   return threads
-    .filter((thread) => !thread.isDeleted)
-    .flatMap((thread) =>
-      thread.comments
-        .filter((comment) => comment.commentType === 'text' && !comment.isDeleted && comment.content)
-        .map((comment) => ({
-          id: `${thread.id}/${comment.id}`,
-          author: person(comment.author),
-          body: comment.content!,
-          createdAt: comment.publishedDate,
-          url: `${repoUrl(repo)}/pullrequest/${number}?discussionId=${thread.id}`,
-        })),
-    )
+    .filter((thread) => !thread.isDeleted && !thread.threadContext?.filePath)
+    .flatMap((thread) => threadComments(repo, number, thread))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
+
+export function toThreads(repo: AzureRepo, number: number, threads: Thread[]): PullRequestThread[] {
+  return threads.flatMap((thread) => {
+    const context = thread.threadContext
+    const start = context?.rightFileStart ?? context?.leftFileStart
+    if (thread.isDeleted || !context?.filePath || !start) return []
+    const comments = threadComments(repo, number, thread)
+    if (!comments.length) return []
+    const side: DiffSide = context.rightFileStart ? 'right' : 'left'
+    return [{ id: String(thread.id), path: context.filePath.replace(/^\//, ''), line: start.line, side, comments }]
+  })
+}
+
+const MERGE_STRATEGIES: Record<MergeMethod, string> = { merge: 'noFastForward', squash: 'squash', rebase: 'rebase' }
+
+function mergeable(status: GitPullRequest['mergeStatus']): boolean | null {
+  if (status === 'succeeded') return true
+  if (status === 'conflicts' || status === 'failure' || status === 'rejectedByPolicy') return false
+  return null
+}
+
+const VOTES: Record<PullRequestReviewInput['verdict'], number> = { approve: 10, request_changes: -5 }
 
 const STATUS_FILTER: Record<PullRequestQuery['state'], string> = { open: 'active', closed: 'all', all: 'all' }
 
@@ -167,6 +205,12 @@ export function createAzureProvider(request: Request): ProviderImplementation {
     }
     return id
   }
+
+  const postThread = (credential: ProviderCredential, repo: AzureRepo, number: number, body: string) =>
+    call<Thread>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads`), {
+      comments: [{ parentCommentId: 0, content: body, commentType: 1 }],
+      status: 1,
+    })
 
   const pulls = async (credential: ProviderCredential, repo: AzureRepo, criteria: Record<string, string>) => {
     const query = Object.fromEntries(Object.entries(criteria).map(([key, value]) => [`searchCriteria.${key}`, value]))
@@ -206,10 +250,7 @@ export function createAzureProvider(request: Request): ProviderImplementation {
       },
       async comment(credential, remote, number, body) {
         const repo = azureRepo(remote)
-        const thread = await call<Thread>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads`), {
-          comments: [{ parentCommentId: 0, content: body, commentType: 1 }],
-          status: 1,
-        })
+        const thread = await postThread(credential, repo, number, body)
         const [comment] = toComments(repo, number, [{ ...thread, comments: thread.comments.map((entry) => ({ ...entry, commentType: 'text' })) }])
         if (!comment) throw new HostError('requestFailed', 'Azure DevOps did not return the comment')
         return comment
@@ -224,6 +265,50 @@ export function createAzureProvider(request: Request): ProviderImplementation {
           isDraft: input.draft,
         })
         return toSummary(repo, pull)
+      },
+      async review(credential, remote, number, { verdict, body }: PullRequestReviewInput) {
+        const repo = azureRepo(remote)
+        const reviewer = await me(credential, repo)
+        await call(credential, 'PUT', apiUrl(repo, `pullRequests/${number}/reviewers/${segment(reviewer)}`), { vote: VOTES[verdict] })
+        if (body.trim()) await postThread(credential, repo, number, body)
+      },
+      async threads(credential, remote, number) {
+        const repo = azureRepo(remote)
+        const data = await call<{ value: Thread[] }>(credential, 'GET', apiUrl(repo, `pullRequests/${number}/threads`))
+        return toThreads(repo, number, data.value)
+      },
+      async commentOnLine(credential, remote, number, { path, line, side, body }: LineCommentInput) {
+        const repo = azureRepo(remote)
+        const start = { line, offset: 1 }
+        const range = side === 'right' ? { rightFileStart: start, rightFileEnd: start } : { leftFileStart: start, leftFileEnd: start }
+        const thread = await call<Thread>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads`), {
+          comments: [{ parentCommentId: 0, content: body, commentType: 1 }],
+          status: 1,
+          threadContext: { filePath: `/${path}`, ...range },
+        })
+        const comments = threadComments(repo, number, { ...thread, comments: thread.comments.map((entry) => ({ ...entry, commentType: 'text' })) })
+        return { id: String(thread.id), path, line, side, comments }
+      },
+      async reply(credential, remote, number, threadId, body) {
+        const repo = azureRepo(remote)
+        const id = Number(threadId)
+        if (!Number.isSafeInteger(id) || id <= 0) throw new HostError('invalidRequest', `invalid thread id: ${threadId}`)
+        const created = await call<Comment>(credential, 'POST', apiUrl(repo, `pullRequests/${number}/threads/${id}/comments`), {
+          parentCommentId: 1,
+          content: body,
+          commentType: 1,
+        })
+        const [reply] = threadComments(repo, number, { id, comments: [{ ...created, commentType: 'text' }] })
+        if (!reply) throw new HostError('requestFailed', 'Azure DevOps did not return the reply')
+        return reply
+      },
+      async merge(credential, remote, number, { method, sha, deleteBranch }: PullRequestMergeInput) {
+        const repo = azureRepo(remote)
+        await call(credential, 'PATCH', apiUrl(repo, `pullrequests/${number}`), {
+          status: 'completed',
+          lastMergeSourceCommit: { commitId: sha },
+          completionOptions: { mergeStrategy: MERGE_STRATEGIES[method], deleteSourceBranch: deleteBranch },
+        })
       },
     },
   }

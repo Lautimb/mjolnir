@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ExternalLink } from 'lucide-react'
-import type { FileChange, PullRequestComment, PullRequestDetail as Detail } from '@mjolnir/core/browser'
+import { useCallback, useEffect, useState } from 'react'
+import { Check, ExternalLink, MessageSquareWarning } from 'lucide-react'
+import type { FileChange, PullRequestComment, PullRequestDetail as Detail, PullRequestReviewInput } from '@mjolnir/core/browser'
 import type { PullRequestDiff } from '../../../shared/api'
 import { DiffBrowser } from '../diff/DiffBrowser'
 import { Stats } from '../diff/Stats'
@@ -11,6 +11,9 @@ import { Button } from '../ui/Button'
 import { Note } from '../ui/EmptyState'
 import { TextArea } from '../ui/fields'
 import { Segmented } from '../ui/Segmented'
+import { Markdown } from './Markdown'
+import { useLineThreads } from './LineThreads'
+import { MergeBox } from './MergeBox'
 import { DetailBadges } from './PullBadges'
 import { PullNumber } from './PullRow'
 
@@ -18,12 +21,18 @@ interface Props {
   repoId: string
   number: number
   providerName: string
+  canReview: boolean
+  canMerge: boolean
+  canComment: boolean
+  onChanged(): void
   sideBySide: boolean
   tree: boolean
   onTreeChange(tree: boolean): void
 }
 
 type Tab = 'conversation' | 'files'
+
+type Action = 'comment' | PullRequestReviewInput['verdict']
 
 const DETAIL = 'flex min-h-0 min-w-0 flex-col'
 
@@ -36,12 +45,12 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
         <strong className="text-fg">{comment.author.login}</strong>
         <span>{ago(new Date(comment.createdAt))}</span>
       </header>
-      <div className="p-3 break-words whitespace-pre-wrap">{comment.body}</div>
+      <Markdown className="p-3">{comment.body}</Markdown>
     </article>
   )
 }
 
-export function PullRequestDetail({ repoId, number, providerName, sideBySide, tree, onTreeChange }: Props) {
+export function PullRequestDetail({ repoId, number, providerName, canReview, canMerge, canComment, onChanged, sideBySide, tree, onTreeChange }: Props) {
   const { t } = useI18n()
   const ago = useRelativeTime()
   const [detail, setDetail] = useState<Detail | null>(null)
@@ -49,20 +58,27 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
   const [diff, setDiff] = useState<PullRequestDiff | null>(null)
   const [tab, setTab] = useState<Tab>('conversation')
   const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
+  const [sending, setSending] = useState<Action | null>(null)
   const [error, setError] = useState<unknown>(null)
   const { pulls } = window.mjolnir
+  const lines = useLineThreads(repoId, number, detail?.headSha ?? '', canComment && tab === 'files')
+
+  const reload = useCallback(
+    () =>
+      Promise.all([pulls.get(repoId, number), pulls.comments(repoId, number)]).then(([nextDetail, nextComments]) => {
+        setDetail(nextDetail)
+        setComments(nextComments)
+      }, setError),
+    [repoId, number],
+  )
 
   useEffect(() => {
     setDetail(null)
     setComments([])
     setDiff(null)
     setError(null)
-    Promise.all([pulls.get(repoId, number), pulls.comments(repoId, number)]).then(([nextDetail, nextComments]) => {
-      setDetail(nextDetail)
-      setComments(nextComments)
-    }, setError)
-  }, [repoId, number])
+    void reload()
+  }, [reload])
 
   useEffect(() => {
     if (tab !== 'files' || !detail || diff) return
@@ -74,24 +90,31 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
     [repoId, diff],
   )
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    if (!draft.trim()) return
-    setSending(true)
+  const send = async (action: Action) => {
+    const body = draft.trim()
+    setSending(action)
     try {
-      const created = await pulls.comment(repoId, number, draft.trim())
-      setComments((current) => [...current, created])
+      if (action === 'comment') {
+        const created = await pulls.comment(repoId, number, body)
+        setComments((current) => [...current, created])
+      } else {
+        await pulls.review(repoId, number, { verdict: action, body })
+        await reload()
+      }
       setDraft('')
+      setError(null)
     } catch (err) {
       setError(err)
     } finally {
-      setSending(false)
+      setSending(null)
     }
   }
 
   if (!detail) {
     return <div className={DETAIL}>{error !== null && <Note error>{describeError(t, error)}</Note>}</div>
   }
+
+  const reviewable = canReview && detail.state === 'open'
 
   return (
     <div className={DETAIL}>
@@ -131,6 +154,7 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
       </header>
 
       {error !== null && <Note error>{describeError(t, error)}</Note>}
+      {tab === 'files' && lines.error !== null && <Note error>{describeError(t, lines.error)}</Note>}
 
       {tab === 'conversation' ? (
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
@@ -138,15 +162,51 @@ export function PullRequestDetail({ repoId, number, providerName, sideBySide, tr
           {comments.map((comment) => (
             <Comment key={comment.id} comment={comment} />
           ))}
-          <form className="flex flex-col items-end gap-2" onSubmit={submit}>
+          {canMerge && detail.state === 'open' && <MergeBox repoId={repoId} detail={detail} onMerged={() => reload().then(onChanged)} />}
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (draft.trim()) void send('comment')
+            }}
+          >
             <TextArea placeholder={t('pulls.commentPlaceholder')} value={draft} onChange={(event) => setDraft(event.target.value)} rows={4} />
-            <Button type="submit" variant="primary" disabled={sending || !draft.trim()}>
-              {sending ? t('pulls.commenting') : t('pulls.comment')}
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {reviewable && (
+                <>
+                  <Button
+                    title={draft.trim() ? undefined : t('pulls.reviewActions.needsComment')}
+                    disabled={sending !== null || !draft.trim()}
+                    onClick={() => void send('request_changes')}
+                  >
+                    <MessageSquareWarning size={14} />
+                    {sending === 'request_changes' ? t('pulls.commenting') : t('pulls.reviewActions.requestChanges')}
+                  </Button>
+                  <Button disabled={sending !== null} onClick={() => void send('approve')}>
+                    <Check size={14} />
+                    {sending === 'approve' ? t('pulls.commenting') : t('pulls.reviewActions.approve')}
+                  </Button>
+                </>
+              )}
+              <Button type="submit" variant="primary" disabled={sending !== null || !draft.trim()}>
+                {sending === 'comment' ? t('pulls.commenting') : t('pulls.comment')}
+              </Button>
+            </div>
           </form>
         </div>
       ) : (
-        diff && <DiffBrowser files={diff.files} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} reloadKey={diff.to} loadFile={loadFile} />
+        diff && (
+          <DiffBrowser
+            files={diff.files}
+            sideBySide={sideBySide}
+            tree={tree}
+            onTreeChange={onTreeChange}
+            reloadKey={diff.to}
+            loadFile={loadFile}
+            annotate={lines.annotate}
+            noteCount={lines.noteCount}
+          />
+        )
       )}
     </div>
   )

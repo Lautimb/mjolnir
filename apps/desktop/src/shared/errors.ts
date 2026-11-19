@@ -9,6 +9,7 @@ export interface AppErrorParams {
   promptUnsupported: { profile: string }
   worktreeMissing: { path: string }
   unsupportedRemote: NoParams
+  unsupportedFeature: NoParams
   noAccount: { provider: string }
   providerUnauthorized: { provider: string }
   providerRequestFailed: { status: number; message: string }

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { isOriginPattern } from './permissions'
 import { isRemoteRule } from './remotes'
 import { isRepoGlob } from './repo-paths'
+import { PULL_REQUEST_FEATURES } from './providers'
 import { LOCALIZED } from './strings'
 
 export const MANIFEST_FILE = 'mjolnir-plugin.json'
@@ -58,7 +59,10 @@ const provider = z
       .strict()
       .default({ token: true }),
     pulls: z
-      .object({ refspec: z.string().regex(/^refs\/[A-Za-z0-9/_.-]*\{number\}[A-Za-z0-9/_.-]*$/, 'must be a ref with {number}') })
+      .object({
+        refspec: z.string().regex(/^refs\/[A-Za-z0-9/_.-]*\{number\}[A-Za-z0-9/_.-]*$/, 'must be a ref with {number}'),
+        features: z.array(z.enum(PULL_REQUEST_FEATURES)).max(PULL_REQUEST_FEATURES.length).default([]),
+      })
       .strict()
       .optional(),
   })
