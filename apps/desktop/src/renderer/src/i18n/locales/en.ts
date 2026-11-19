@@ -343,6 +343,7 @@ export const en: Messages = {
     check: 'Check for updates',
     restart: 'Restart to update',
     download: 'Download update',
+    pending: 'Update {version} available',
     status: {
       disabled: 'Automatic updates only work in the installed app.',
       checking: 'Checking for updates…',

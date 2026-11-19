@@ -25,7 +25,7 @@ import { TerminalView } from '../terminals/TerminalView'
 import { useAgentNotifications } from '../terminals/useAgentNotifications'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
 import { cx } from '../ui/cx'
-import { useUpdates } from '../updates/useUpdates'
+import { pendingUpdate, useUpdates } from '../updates/useUpdates'
 import { LAYOUTS, MAIN_COLUMN } from './layout'
 import { Rail, type RailPluginView, type View } from './Rail'
 import { StatusBar } from './StatusBar'
@@ -215,7 +215,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       className={cx('grid h-full grid-rows-[var(--spacing-titlebar)_minmax(0,1fr)_var(--spacing-statusbar)]', LAYOUTS[settings.panelPosition])}
     >
       <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} updates={updates} />
-      <Rail view={view} changes={changes} pluginViews={railViews} onChange={changeView} />
+      <Rail view={view} changes={changes} pluginViews={railViews} pendingUpdate={pendingUpdate(updates)} onChange={changeView} />
       {view === 'settings' && <SettingsView settings={settings} updates={updates} onChange={updateSettings} />}
       {view === 'plugins' && (
         <PluginsView

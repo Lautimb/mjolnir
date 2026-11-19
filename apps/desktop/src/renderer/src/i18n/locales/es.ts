@@ -342,6 +342,7 @@ export const es = {
     check: 'Buscar actualizaciones',
     restart: 'Reiniciar y actualizar',
     download: 'Descargar actualización',
+    pending: 'Actualización {version} disponible',
     status: {
       disabled: 'Las actualizaciones automáticas solo funcionan en la app instalada.',
       checking: 'Buscando actualizaciones…',

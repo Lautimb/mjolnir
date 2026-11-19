@@ -49,10 +49,11 @@ interface Props {
   view: View
   changes: number | null
   pluginViews: RailPluginView[]
+  pendingUpdate: string | null
   onChange(view: View): void
 }
 
-export function Rail({ view, changes, pluginViews, onChange }: Props) {
+export function Rail({ view, changes, pluginViews, pendingUpdate, onChange }: Props) {
   const { t } = useI18n()
   const toggle = (target: View) => onChange(view === target ? 'sessions' : target)
 
@@ -93,8 +94,18 @@ export function Rail({ view, changes, pluginViews, onChange }: Props) {
       <RailItem title={t('plugins.manage')} active={view === 'plugins'} onClick={() => toggle('plugins')}>
         <Puzzle size={18} />
       </RailItem>
-      <RailItem title={t('rail.settings')} active={view === 'settings'} onClick={() => toggle('settings')}>
+      <RailItem
+        title={pendingUpdate ? `${t('rail.settings')} · ${t('updates.pending', { version: pendingUpdate })}` : t('rail.settings')}
+        active={view === 'settings'}
+        onClick={() => toggle('settings')}
+      >
         <Settings size={18} />
+        {pendingUpdate && (
+          <span
+            aria-label={t('updates.pending', { version: pendingUpdate })}
+            className="pointer-events-none absolute top-1 right-1 size-2 rounded-full bg-accent shadow-[0_0_0_2px_var(--color-surface)]"
+          />
+        )}
       </RailItem>
     </nav>
   )
