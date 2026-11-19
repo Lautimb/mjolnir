@@ -9,6 +9,9 @@ describe('parseRemoteUrl', () => {
     ['https://user:pass@GitHub.com/Lautimb/mjolnir.git/', 'github.com', 'Lautimb/mjolnir'],
     ['ssh://git@gitlab.com:2222/group/sub/project.git', 'gitlab.com', 'group/sub/project'],
     ['git@ssh.dev.azure.com:v3/org/My Project/repo', 'ssh.dev.azure.com', 'v3/org/My Project/repo'],
+    ['git@ssh.dev.azure.com:v3/org/My%20Project/repo', 'ssh.dev.azure.com', 'v3/org/My Project/repo'],
+    ['org@vs-ssh.visualstudio.com:v3/org/My%20Project/repo', 'vs-ssh.visualstudio.com', 'v3/org/My Project/repo'],
+    ['git@github.com:org/100%.git', 'github.com', 'org/100%'],
     ['https://org@dev.azure.com/org/My%20Project/_git/repo', 'dev.azure.com', 'org/My Project/_git/repo'],
   ])('parses %s', (url, host, path) => {
     expect(parseRemoteUrl(url)).toEqual({ host, path })
