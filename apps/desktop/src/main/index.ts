@@ -143,7 +143,7 @@ void app.whenReady().then(async () => {
     updater,
   })
   window.open()
-  updater.start()
+  void updater.start()
   app.on('activate', () => window.open())
 })
 
