@@ -1,7 +1,7 @@
 {
   "id": "azure-devops",
-  "version": "0.2.0",
-  "engines": { "mjolnir": ">=0.1.0", "api": 1 },
+  "version": "0.3.0",
+  "engines": { "mjolnir": ">=0.3.0", "api": 1 },
   "name": "Azure DevOps",
   "description": "%description%",
   "locales": { "es": "locales/es.json", "en": "locales/en.json" },
