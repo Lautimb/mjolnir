@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Copy, Minus, Square, X } from 'lucide-react'
 import { useI18n } from '../i18n/I18nProvider'
+import type { UpdateState } from '../../../shared/updates'
 import { cx } from '../ui/cx'
+import { UpdateButton } from '../updates/UpdateButton'
 import { MjolnirMark } from './MjolnirMark'
 
 type Chrome = 'overlay' | 'mac' | 'custom'
@@ -18,7 +20,7 @@ const control = 'grid w-[46px] place-items-center text-muted'
 const regular = `${control} hover:bg-hover hover:text-fg`
 const closer = `${control} hover:bg-close hover:text-white`
 
-export function TitleBar({ context }: { context: string }) {
+export function TitleBar({ context, updates }: { context: string; updates: UpdateState | null }) {
   const { t } = useI18n()
   const [maximized, setMaximized] = useState(false)
 
@@ -40,6 +42,7 @@ export function TitleBar({ context }: { context: string }) {
         Mjolnir
       </div>
       <div className="min-w-0 flex-1 truncate text-center">{context}</div>
+      <UpdateButton state={updates} />
       {chrome === 'custom' && (
         <div className="flex self-stretch [-webkit-app-region:no-drag]">
           <button className={regular} aria-label={t('window.minimize')} onClick={() => window.mjolnir.window.minimize()}>

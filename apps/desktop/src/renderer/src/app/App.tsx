@@ -25,6 +25,7 @@ import { TerminalView } from '../terminals/TerminalView'
 import { useAgentNotifications } from '../terminals/useAgentNotifications'
 import { useTerminalTabs } from '../terminals/useTerminalTabs'
 import { cx } from '../ui/cx'
+import { useUpdates } from '../updates/useUpdates'
 import { LAYOUTS, MAIN_COLUMN } from './layout'
 import { Rail, type RailPluginView, type View } from './Rail'
 import { StatusBar } from './StatusBar'
@@ -53,6 +54,7 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
   const [addingRepo, setAddingRepo] = useState(false)
   const { notice, show: setNotice, dismiss: dismissNotice } = useNotice()
   const { plugins } = usePlugins()
+  const updates = useUpdates()
   const [mountedViews, setMountedViews] = useState<PluginViewKey[]>([])
   const [sessionDraft, setSessionDraft] = useState<SessionDraft | null>(null)
 
@@ -212,9 +214,9 @@ export function App({ settings, onSettingsChange: updateSettings }: Props) {
       data-panel={settings.panelPosition}
       className={cx('grid h-full grid-rows-[var(--spacing-titlebar)_minmax(0,1fr)_var(--spacing-statusbar)]', LAYOUTS[settings.panelPosition])}
     >
-      <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} />
+      <TitleBar context={session.repo ? `${session.repo.name} · ${session.title}` : session.title} updates={updates} />
       <Rail view={view} changes={changes} pluginViews={railViews} onChange={changeView} />
-      {view === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
+      {view === 'settings' && <SettingsView settings={settings} updates={updates} onChange={updateSettings} />}
       {view === 'plugins' && (
         <PluginsView
           plugins={plugins}

@@ -337,6 +337,27 @@ export const en: Messages = {
       off: 'Off',
     },
   },
+  updates: {
+    version: 'Mjolnir {version}',
+    description: 'Mjolnir checks for new versions on launch and every few hours.',
+    check: 'Check for updates',
+    restart: 'Restart to update',
+    download: 'Download update',
+    status: {
+      disabled: 'Automatic updates only work in the installed app.',
+      checking: 'Checking for updates…',
+      latest: "You're on the latest version.",
+      available: 'A new version ({version}) is available. Download it from GitHub.',
+      downloading: 'Downloading {version}… {percent}%',
+      ready: 'Version {version} is ready. It installs when you restart or quit the app.',
+      error: "Couldn't check for updates.",
+    },
+    notify: {
+      title: 'Mjolnir {version} available',
+      ready: 'Restart the app to update.',
+      available: 'Download the new version from GitHub.',
+    },
+  },
   plugins: {
     title: 'Plugins',
     description: 'Features installed separately from Mjolnir, from the catalog or from a .mjp package. To develop them, load them from a folder.',

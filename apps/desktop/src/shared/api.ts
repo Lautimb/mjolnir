@@ -27,6 +27,7 @@ import type { GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { PluginManifest } from '@mjolnir/plugin-sdk/manifest'
 import type { PluginPortRole } from './plugins'
 import type { Settings } from './settings'
+import type { UpdateState } from './updates'
 
 export interface SpawnRequest {
   id: string
@@ -164,6 +165,12 @@ export interface MjolnirApi {
   }
   profiles: {
     list(): Promise<TerminalProfile[]>
+  }
+  updates: {
+    state(): Promise<UpdateState>
+    check(): void
+    apply(): void
+    onChange(listener: (state: UpdateState) => void): () => void
   }
   repos: {
     list(): Promise<Repo[]>

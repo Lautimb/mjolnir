@@ -19,6 +19,7 @@
     "package:dir": "electron-vite build && electron-builder --dir"
   },
   "dependencies": {
+    "electron-updater": "6.8.11",
     "node-pty": "^1.1.0"
   },
   "devDependencies": {

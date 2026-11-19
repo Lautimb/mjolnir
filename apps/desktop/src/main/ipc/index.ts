@@ -7,12 +7,14 @@ import type { PluginRegistry } from '../plugins/registry'
 import type { PtyManager } from '../pty'
 import type { Pulls } from '../pulls'
 import type { Store } from '../store'
+import type { Updater } from '../updater'
 import type { MainWindow } from '../window'
 import type { Workspace } from '../workspace'
 import { registerAccountsIpc } from './accounts'
 import { registerPluginsIpc } from './plugins'
 import { registerPullsIpc } from './pulls'
 import { registerTerminalsIpc } from './terminals'
+import { registerUpdatesIpc } from './updates'
 import { registerWindowIpc } from './window'
 import { registerWorkspaceIpc } from './workspace'
 
@@ -28,6 +30,7 @@ export interface Services {
   plugins: PluginRegistry
   pluginCatalog: PluginCatalog
   pluginPorts: PluginPorts
+  updater: Updater
 }
 
 export function registerIpc(services: Services): void {
@@ -37,4 +40,5 @@ export function registerIpc(services: Services): void {
   registerAccountsIpc(services)
   registerPullsIpc(services)
   registerPluginsIpc(services)
+  registerUpdatesIpc(services)
 }

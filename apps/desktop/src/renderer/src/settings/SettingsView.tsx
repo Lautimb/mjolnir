@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { LOCALE_IDS, type LanguagePreference } from '../../../shared/locales'
 import { TERMINAL_FONT_SIZE, type Settings } from '../../../shared/settings'
+import type { UpdateState } from '../../../shared/updates'
 import { LOCALES } from '../i18n/catalog'
 import { useI18n } from '../i18n/I18nProvider'
 import { nextZoom, ZOOM_LEVELS } from '../../../shared/zoom'
@@ -11,10 +12,12 @@ import { cx, eyebrow } from '../ui/cx'
 import { Description } from '../ui/Description'
 import { Select } from '../ui/fields'
 import { Segmented } from '../ui/Segmented'
+import { UpdatesSetting } from '../updates/UpdatesSetting'
 import { AccountsSettings } from './AccountsSettings'
 
 interface Props {
   settings: Settings
+  updates: UpdateState | null
   onChange(patch: Partial<Settings>): void
 }
 
@@ -39,7 +42,7 @@ function Setting({ title, description, children }: { title: string; description:
   )
 }
 
-export function SettingsView({ settings, onChange }: Props) {
+export function SettingsView({ settings, updates, onChange }: Props) {
   const { t } = useI18n()
 
   return (
@@ -48,6 +51,7 @@ export function SettingsView({ settings, onChange }: Props) {
         <h1 className="mb-6 text-xl font-semibold">{t('settings.title')}</h1>
 
         <Section title={t('settings.sections.general')}>
+          <UpdatesSetting state={updates} />
           <Setting title={t('settings.language.title')} description={t('settings.language.description')}>
             <Select value={settings.language} onChange={(event) => onChange({ language: event.target.value as LanguagePreference })}>
               <option value="system">{t('settings.language.system')}</option>

@@ -21,6 +21,7 @@ import { PtyManager } from './pty'
 import { Pulls } from './pulls'
 import { hardenApp, openExternal } from './security'
 import { Store } from './store'
+import { Updater } from './updater'
 import { MainWindow } from './window'
 import { Workspace } from './workspace'
 
@@ -123,6 +124,7 @@ void app.whenReady().then(async () => {
     },
   })
   const accounts = new Accounts(join(userData, 'accounts.json'), environment.repoHosts, plugins.providers)
+  const updater = new Updater((state) => window.send('updates:changed', state))
   await plugins.registry.init()
   servePlugins((pluginId) => plugins.registry.root(pluginId))
 
@@ -138,8 +140,10 @@ void app.whenReady().then(async () => {
     plugins: plugins.registry,
     pluginCatalog: plugins.catalog,
     pluginPorts: plugins.ports,
+    updater,
   })
   window.open()
+  updater.start()
   app.on('activate', () => window.open())
 })
 

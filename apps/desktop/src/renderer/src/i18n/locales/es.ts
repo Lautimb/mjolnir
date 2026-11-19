@@ -336,6 +336,27 @@ export const es = {
       off: 'No',
     },
   },
+  updates: {
+    version: 'Mjolnir {version}',
+    description: 'Mjolnir busca versiones nuevas al iniciar y cada algunas horas.',
+    check: 'Buscar actualizaciones',
+    restart: 'Reiniciar y actualizar',
+    download: 'Descargar actualización',
+    status: {
+      disabled: 'Las actualizaciones automáticas solo funcionan en la app instalada.',
+      checking: 'Buscando actualizaciones…',
+      latest: 'Tenés la última versión.',
+      available: 'Hay una versión nueva ({version}). Descargala desde GitHub.',
+      downloading: 'Descargando {version}… {percent}%',
+      ready: 'La versión {version} está lista. Se instala al reiniciar o al cerrar la app.',
+      error: 'No se pudo buscar actualizaciones.',
+    },
+    notify: {
+      title: 'Mjolnir {version} disponible',
+      ready: 'Reiniciá la app para actualizar.',
+      available: 'Descargá la versión nueva desde GitHub.',
+    },
+  },
   plugins: {
     title: 'Plugins',
     description: 'Funcionalidades que se instalan aparte de Mjolnir, desde el catálogo o desde un paquete .mjp. Para desarrollarlas se cargan desde una carpeta.',

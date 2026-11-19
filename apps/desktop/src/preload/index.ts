@@ -33,6 +33,12 @@ const api: MjolnirApi = {
   profiles: {
     list: () => ipcRenderer.invoke('profiles:list'),
   },
+  updates: {
+    state: () => ipcRenderer.invoke('updates:state'),
+    check: () => ipcRenderer.send('updates:check'),
+    apply: () => ipcRenderer.send('updates:apply'),
+    onChange: (listener) => subscribe('updates:changed', listener),
+  },
   repos: {
     list: () => ipcRenderer.invoke('repos:list'),
     hosts: () => ipcRenderer.invoke('repos:hosts'),
