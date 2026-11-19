@@ -65,12 +65,30 @@ export interface PullRequestComment {
   url: string
 }
 
-export const PULL_REQUEST_FEATURES = ['review', 'merge'] as const
+export const PULL_REQUEST_FEATURES = ['review', 'merge', 'inlineComments'] as const
 
 export type PullRequestFeature = (typeof PULL_REQUEST_FEATURES)[number]
 
 export interface PullRequestReviewInput {
   verdict: 'approve' | 'request_changes'
+  body: string
+}
+
+export type DiffSide = 'left' | 'right'
+
+export interface PullRequestThread {
+  id: string
+  path: string
+  line: number
+  side: DiffSide
+  comments: PullRequestComment[]
+}
+
+export interface LineCommentInput {
+  path: string
+  line: number
+  side: DiffSide
+  commitSha: string
   body: string
 }
 
@@ -115,6 +133,9 @@ export interface PullRequestService {
   create(credential: ProviderCredential, repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
   review?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
   merge?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: PullRequestMergeInput): Promise<void>
+  threads?(credential: ProviderCredential, repo: RemoteRepo, number: number): Promise<PullRequestThread[]>
+  commentOnLine?(credential: ProviderCredential, repo: RemoteRepo, number: number, input: LineCommentInput): Promise<PullRequestThread>
+  reply?(credential: ProviderCredential, repo: RemoteRepo, number: number, threadId: string, body: string): Promise<PullRequestComment>
 }
 
 export interface ProviderImplementation {

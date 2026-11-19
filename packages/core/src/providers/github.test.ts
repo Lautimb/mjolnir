@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checksState, createGitHubClient, github, ProviderRequestError, reviewDecision } from './github'
+import { checksState, createGitHubClient, github, ProviderRequestError, reviewDecision, toThreads } from './github'
 import { parseRemoteUrl } from './remote'
 import type { PullRequestReview } from './types'
 
@@ -142,6 +142,33 @@ describe('createGitHubClient', () => {
       ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'APPROVE', body: '' }],
       ['/repos/Lautimb/mjolnir/pulls/7/reviews', { event: 'REQUEST_CHANGES', body: 'Fix the tests' }],
     ])
+  })
+
+  it('groups review comments into line threads, leaving out outdated ones', () => {
+    const base = { user: { login: 'ana' }, body: 'x', created_at: 't', html_url: 'u' }
+    const threads = toThreads([
+      { ...base, id: 1, path: 'src/a.ts', line: 12, side: 'RIGHT' },
+      { ...base, id: 2, path: 'src/a.ts', line: 12, side: 'RIGHT', in_reply_to_id: 1, body: 'reply' },
+      { ...base, id: 3, path: 'src/b.ts', line: null, side: 'RIGHT' },
+      { ...base, id: 4, path: 'src/b.ts', line: 3, side: 'LEFT' },
+    ])
+    expect(threads.map((thread) => [thread.id, thread.path, thread.line, thread.side, thread.comments.map((entry) => entry.body)])).toEqual([
+      ['1', 'src/a.ts', 12, 'right', ['x', 'reply']],
+      ['4', 'src/b.ts', 3, 'left', ['x']],
+    ])
+  })
+
+  it('comments on a line of the head commit and replies to the thread root', async () => {
+    const created = { id: 9, user: { login: 'ana' }, body: 'nit', created_at: 't', html_url: 'u', path: 'a.ts', line: 4, side: 'RIGHT' }
+    const { fetch, calls } = fakeFetch({ '/repos/Lautimb/mjolnir/pulls/7/comments': created })
+    const client = createGitHubClient({ token: 't', fetch })
+    expect(await client.commentOnLine(repo, 7, { path: 'a.ts', line: 4, side: 'right', commitSha: 'abc123', body: 'nit' })).toMatchObject({ id: '9', line: 4, side: 'right' })
+    await client.reply(repo, 7, '9', 'done')
+    expect(calls.map((call) => [call.url.replace('https://api.github.com', ''), JSON.parse(String(call.init.body))])).toEqual([
+      ['/repos/Lautimb/mjolnir/pulls/7/comments', { body: 'nit', commit_id: 'abc123', path: 'a.ts', line: 4, side: 'RIGHT' }],
+      ['/repos/Lautimb/mjolnir/pulls/7/comments/9/replies', { body: 'done' }],
+    ])
+    await expect(client.reply(repo, 7, '../../x', 'done')).rejects.toThrow(RangeError)
   })
 
   it('sends only the known fields when creating a pull request', async () => {

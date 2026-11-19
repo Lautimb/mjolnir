@@ -3,16 +3,20 @@ import type {
   CredentialSource,
   PullRequestComment,
   PullRequestDetail,
+  LineCommentInput,
   PullRequestMergeInput,
   PullRequestQuery,
   PullRequestReviewInput,
   PullRequestSummary,
+  PullRequestThread,
 } from '@mjolnir/plugin-sdk/providers'
 import type { ParsedRemote, RemoteRepo } from './remote'
 
 export type {
   ChecksState,
   CreatePullRequestInput,
+  DiffSide,
+  LineCommentInput,
   MergeMethod,
   Person,
   PullRequestComment,
@@ -26,6 +30,7 @@ export type {
   PullRequestState,
   PullRequestStateFilter,
   PullRequestSummary,
+  PullRequestThread,
   ReviewDecision,
 } from '@mjolnir/plugin-sdk/providers'
 
@@ -49,6 +54,9 @@ export interface PullRequestProvider {
   create(repo: RemoteRepo, input: CreatePullRequestInput): Promise<PullRequestSummary>
   review?(repo: RemoteRepo, number: number, input: PullRequestReviewInput): Promise<void>
   merge?(repo: RemoteRepo, number: number, input: PullRequestMergeInput): Promise<void>
+  threads?(repo: RemoteRepo, number: number): Promise<PullRequestThread[]>
+  commentOnLine?(repo: RemoteRepo, number: number, input: LineCommentInput): Promise<PullRequestThread>
+  reply?(repo: RemoteRepo, number: number, threadId: string, body: string): Promise<PullRequestComment>
   headRefspec(number: number): string
 }
 

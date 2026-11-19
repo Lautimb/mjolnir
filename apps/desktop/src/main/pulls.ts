@@ -3,6 +3,7 @@ import {
   type CreatePullRequestInput,
   type FileChange,
   type PullRequestQuery,
+  type LineCommentInput,
   type PullRequestMergeInput,
   type PullRequestReviewInput,
   type PullRequestProvider,
@@ -55,6 +56,27 @@ export class Pulls {
 
   comment(repoId: string, number: number, body: string) {
     return this.call(repoId, (pulls, remote) => pulls.comment(remote, number, body))
+  }
+
+  threads(repoId: string, number: number) {
+    return this.call(repoId, (pulls, remote) => {
+      if (!pulls.threads) throw new AppError('unsupportedFeature', {})
+      return pulls.threads(remote, number)
+    })
+  }
+
+  commentOnLine(repoId: string, number: number, input: LineCommentInput) {
+    return this.call(repoId, (pulls, remote) => {
+      if (!pulls.commentOnLine) throw new AppError('unsupportedFeature', {})
+      return pulls.commentOnLine(remote, number, input)
+    })
+  }
+
+  reply(repoId: string, number: number, threadId: string, body: string) {
+    return this.call(repoId, (pulls, remote) => {
+      if (!pulls.reply) throw new AppError('unsupportedFeature', {})
+      return pulls.reply(remote, number, threadId, body)
+    })
   }
 
   merge(repoId: string, number: number, input: PullRequestMergeInput) {

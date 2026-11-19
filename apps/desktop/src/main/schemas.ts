@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isSafeRef, isUuid, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type Host, type PullRequestMergeInput, type PullRequestQuery, type PullRequestReviewInput } from '@mjolnir/core'
+import { isSafeRef, isUuid, MAX_PROMPT, type CreatePullRequestInput, type FileChange, type LineCommentInput, type Host, type PullRequestMergeInput, type PullRequestQuery, type PullRequestReviewInput } from '@mjolnir/core'
 import { isOriginPattern, isRepoGlob, MERGE_METHODS, type GrantablePermissions } from '@mjolnir/plugin-sdk'
 import type { SavedTabs, SpawnRequest } from '../shared/api'
 import { LOCALE_IDS } from '../shared/locales'
@@ -51,6 +51,18 @@ export const createPullRequest: z.ZodType<CreatePullRequestInput> = z.object({
 })
 
 export const comment = z.string().trim().min(1).max(65_536)
+
+export const threadId = z.string().regex(/^\d{1,20}$/)
+
+export const lineCommentInput: z.ZodType<LineCommentInput> = z
+  .object({
+    path,
+    line: z.number().int().positive(),
+    side: z.enum(['left', 'right']),
+    commitSha: z.string().regex(/^([0-9a-f]{7,64})?$/),
+    body: comment,
+  })
+  .strict()
 
 export const mergeInput: z.ZodType<PullRequestMergeInput> = z
   .object({ method: z.enum(MERGE_METHODS), sha: z.string().regex(/^[0-9a-f]{7,64}$/), deleteBranch: z.boolean() })

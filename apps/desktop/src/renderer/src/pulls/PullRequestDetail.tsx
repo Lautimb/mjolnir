@@ -12,6 +12,7 @@ import { Note } from '../ui/EmptyState'
 import { TextArea } from '../ui/fields'
 import { Segmented } from '../ui/Segmented'
 import { Markdown } from './Markdown'
+import { useLineThreads } from './LineThreads'
 import { MergeBox } from './MergeBox'
 import { DetailBadges } from './PullBadges'
 import { PullNumber } from './PullRow'
@@ -22,6 +23,7 @@ interface Props {
   providerName: string
   canReview: boolean
   canMerge: boolean
+  canComment: boolean
   onChanged(): void
   sideBySide: boolean
   tree: boolean
@@ -48,7 +50,7 @@ function Comment({ comment }: { comment: Pick<PullRequestComment, 'author' | 'bo
   )
 }
 
-export function PullRequestDetail({ repoId, number, providerName, canReview, canMerge, onChanged, sideBySide, tree, onTreeChange }: Props) {
+export function PullRequestDetail({ repoId, number, providerName, canReview, canMerge, canComment, onChanged, sideBySide, tree, onTreeChange }: Props) {
   const { t } = useI18n()
   const ago = useRelativeTime()
   const [detail, setDetail] = useState<Detail | null>(null)
@@ -59,6 +61,7 @@ export function PullRequestDetail({ repoId, number, providerName, canReview, can
   const [sending, setSending] = useState<Action | null>(null)
   const [error, setError] = useState<unknown>(null)
   const { pulls } = window.mjolnir
+  const lines = useLineThreads(repoId, number, detail?.headSha ?? '', canComment && tab === 'files')
 
   const reload = useCallback(
     () =>
@@ -151,6 +154,7 @@ export function PullRequestDetail({ repoId, number, providerName, canReview, can
       </header>
 
       {error !== null && <Note error>{describeError(t, error)}</Note>}
+      {tab === 'files' && lines.error !== null && <Note error>{describeError(t, lines.error)}</Note>}
 
       {tab === 'conversation' ? (
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
@@ -191,7 +195,18 @@ export function PullRequestDetail({ repoId, number, providerName, canReview, can
           </form>
         </div>
       ) : (
-        diff && <DiffBrowser files={diff.files} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} reloadKey={diff.to} loadFile={loadFile} />
+        diff && (
+          <DiffBrowser
+            files={diff.files}
+            sideBySide={sideBySide}
+            tree={tree}
+            onTreeChange={onTreeChange}
+            reloadKey={diff.to}
+            loadFile={loadFile}
+            annotate={lines.annotate}
+            noteCount={lines.noteCount}
+          />
+        )
       )}
     </div>
   )

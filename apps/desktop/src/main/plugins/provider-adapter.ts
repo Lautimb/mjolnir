@@ -6,6 +6,7 @@ import {
   type PullRequestComment,
   type PullRequestDetail,
   type PullRequestSummary,
+  type PullRequestThread,
   type ProviderIdentity,
   type ProviderMethod,
 } from '@mjolnir/plugin-sdk'
@@ -69,6 +70,14 @@ const comment: z.ZodType<PullRequestComment> = z.object({
   url: z.url({ protocol: /^https?$/ }),
 })
 
+const thread: z.ZodType<PullRequestThread> = z.object({
+  id: z.string().max(200),
+  path: z.string().min(1).max(4096),
+  line: z.number().int().positive(),
+  side: z.enum(['left', 'right']),
+  comments: z.array(comment).max(1000),
+})
+
 export function pluginProviderAdapter(pluginId: string, contribution: ProviderContribution, displayName: string, invoke: Invoke): ProviderAdapter {
   const id = pluginProviderId(pluginId, contribution.id)
 
@@ -111,6 +120,11 @@ export function pluginProviderAdapter(pluginId: string, contribution: ProviderCo
               create: (repo, input) => call('pulls.create', summary, [credential, repo, input]),
               ...(features.includes('review') && {
                 review: (repo, number, input) => call('pulls.review', z.null(), [credential, repo, number, input]).then(() => undefined),
+              }),
+              ...(features.includes('inlineComments') && {
+                threads: (repo, number) => call('pulls.threads', z.array(thread).max(5000), [credential, repo, number]),
+                commentOnLine: (repo, number, input) => call('pulls.commentOnLine', thread, [credential, repo, number, input]),
+                reply: (repo, number, threadId, body) => call('pulls.reply', comment, [credential, repo, number, threadId, body]),
               }),
               ...(features.includes('merge') && {
                 merge: (repo, number, input) => call('pulls.merge', z.null(), [credential, repo, number, input]).then(() => undefined),

@@ -24,7 +24,7 @@ Hecho y en `main`:
 | Sesiones | Repos por host (Windows, WSL, posix), descubrimiento de repos, sesiones = worktrees en `~/.mjolnir/worktrees/<repo>/<branch>` del lado del host del repo |
 | Terminales | Pestañas por sesión con node-pty, perfiles detectados por plataforma, lanzador de agentes |
 | Diff | Vista por sesión (cambios sin commitear o toda la branch contra su base) con Monaco, badge de archivos cambiados. Historial de commits de la sesión (los propios de la branch o todo, paginado) con el diff de cada commit contra su primer padre |
-| PRs | GitHub: listar (míos / para revisar / todos × abiertos / cerrados / todos), detalle, comentarios, crear (publica la branch si hace falta), diff del PR |
+| PRs | GitHub: listar (míos / para revisar / todos × abiertos / cerrados / todos), detalle, comentarios, crear (publica la branch si hace falta), diff del PR. Descripción y comentarios en Markdown sanitizado, aprobar / pedir cambios, mergear (método, borrar branch) y comentarios inline en el diff con respuestas; Azure DevOps también vía `pulls.features` |
 | Cuentas | Modelo de cuentas por proveedor: CLI (`gh`), token, device flow (pendiente de Client ID). Secretos con `safeStorage` |
 | i18n | Español (fuente de verdad) e inglés, tipado, preparado para más idiomas |
 | Ajustes | Idioma, posición del panel, cursor de terminal |
@@ -103,9 +103,7 @@ Cuenta, PRs y Boards hechos en `plugins/azure-devops`. Falta probarlo contra una
 
 ### PRs v2 **∥**
 
-- Comentarios inline en el diff y respuesta a hilos.
-- Aprobar, pedir cambios y mergear desde la app (botón de merge).
-- Renderizar Markdown en descripción y comentarios (sanitizado).
+- Comentarios inline: en vista unificada solo se ven los hilos del lado nuevo; en Azure el diff es contra el merge del PR, así que las líneas pueden correrse si la base también tocó el archivo. Falta resolver/reabrir hilos.
 - Soporte para varios remotos (hoy solo `origin`).
 - "Míos" con la API de búsqueda (hoy filtra los últimos 100 PRs).
 

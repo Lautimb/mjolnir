@@ -132,6 +132,10 @@ export const en: Messages = {
   },
   diff: {
     pickSession: 'Pick a session in the panel to see its changes.',
+    comments: plural({
+      one: '{count} comment',
+      other: '{count} comments',
+    }),
     modes: {
       working: 'Uncommitted',
       branch: 'Whole branch',
@@ -247,6 +251,9 @@ export const en: Messages = {
     commentPlaceholder: 'Leave a comment…',
     comment: 'Comment',
     commenting: 'Sending…',
+    threads: {
+      reply: 'Reply',
+    },
     reviewActions: {
       approve: 'Approve',
       requestChanges: 'Request changes',

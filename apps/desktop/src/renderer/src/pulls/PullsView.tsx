@@ -158,7 +158,7 @@ export function PullsView({ session, sideBySide, tree, onTreeChange, onOpenSetti
       </aside>
 
       {selection?.kind === 'pull' && (
-        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} canReview={context.provider.pullFeatures.includes('review')} canMerge={context.provider.pullFeatures.includes('merge')} onChanged={refreshList} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} />
+        <PullRequestDetail repoId={session.repo.id} number={selection.number} providerName={context.provider.displayName} canReview={context.provider.pullFeatures.includes('review')} canMerge={context.provider.pullFeatures.includes('merge')} canComment={context.provider.pullFeatures.includes('inlineComments')} onChanged={refreshList} sideBySide={sideBySide} tree={tree} onTreeChange={onTreeChange} />
       )}
       {selection?.kind === 'create' && branch && (
         <CreatePullRequestForm

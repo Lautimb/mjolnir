@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
-import { ChevronDown, ChevronRight, List, ListTree } from 'lucide-react'
+import { ChevronDown, ChevronRight, List, ListTree, MessageSquare } from 'lucide-react'
 import type { ChangeStatus, FileChange } from '@mjolnir/core/browser'
 import type { DiffFile } from '../../../shared/api'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import { cx, eyebrow } from '../ui/cx'
 import { Note } from '../ui/EmptyState'
 import { Segmented } from '../ui/Segmented'
-import { MonacoDiff } from './MonacoDiff'
+import { MonacoDiff, type DiffAnnotations } from './MonacoDiff'
 import { PathMenu, type PathMenuTarget, type PathRoot } from './PathMenu'
 import { Stats } from './Stats'
 import { buildTree, filesInOrder, type DirNode, type TreeNode } from './tree'
@@ -29,6 +29,8 @@ interface Props {
   root?: PathRoot
   reloadKey: string
   loadFile(change: FileChange): Promise<DiffFile>
+  annotate?(path: string): DiffAnnotations | undefined
+  noteCount?(path: string): number
 }
 
 function signature(file: FileChange | undefined): string {
@@ -38,7 +40,7 @@ function signature(file: FileChange | undefined): string {
 const ROW = 'mx-2 flex h-control w-[calc(100%-var(--spacing)*4)] items-center gap-2 rounded-md pr-2 text-left'
 const INDENT_PX = 12
 
-export function DiffBrowser({ files, sideBySide, tree, onTreeChange, root, reloadKey, loadFile }: Props) {
+export function DiffBrowser({ files, sideBySide, tree, onTreeChange, root, reloadKey, loadFile, annotate, noteCount }: Props) {
   const { t } = useI18n()
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState<Content>({ state: 'loading' })
@@ -95,6 +97,12 @@ export function DiffBrowser({ files, sideBySide, tree, onTreeChange, root, reloa
         <span className={cx('truncate text-fg', showDir ? 'max-w-[60%] flex-none' : 'min-w-0 flex-1')}>{file.path.slice(slash + 1)}</span>
         {showDir && (
           <span className="min-w-0 flex-1 truncate text-left text-xs text-subtle [direction:rtl]">{slash > 0 ? file.path.slice(0, slash) : ''}</span>
+        )}
+        {!!noteCount?.(file.path) && (
+          <span className="flex flex-none items-center gap-0.5 text-xs text-subtle" title={t('diff.comments', { count: noteCount(file.path) })}>
+            <MessageSquare size={11} />
+            {noteCount(file.path)}
+          </span>
         )}
         {file.additions !== null && <Stats additions={file.additions} deletions={file.deletions ?? 0} className="flex-none font-mono text-xs" />}
       </button>
@@ -154,7 +162,13 @@ export function DiffBrowser({ files, sideBySide, tree, onTreeChange, root, reloa
       </div>
       <div className="relative min-h-0 min-w-0">
         {content.state === 'ready' && content.kind === 'text' && (
-          <MonacoDiff path={content.path} original={content.original} modified={content.modified} sideBySide={sideBySide} />
+          <MonacoDiff
+            path={content.path}
+            original={content.original}
+            modified={content.modified}
+            sideBySide={sideBySide}
+            annotations={annotate?.(content.path)}
+          />
         )}
         {content.state === 'ready' && content.kind === 'binary' && <Note>{t('diff.binary')}</Note>}
         {content.state === 'ready' && content.kind === 'too-large' && <Note>{t('diff.tooLarge')}</Note>}

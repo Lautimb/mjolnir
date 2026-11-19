@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HttpRequest, HttpResponse } from '@mjolnir/plugin-sdk'
 import { authorization } from './api'
-import { createAzureProvider, reviewDecision, toComments, toDetail, type GitPullRequest } from './azure'
+import { createAzureProvider, reviewDecision, toComments, toDetail, toThreads, type GitPullRequest, type Thread } from './azure'
 
 const credential = { host: 'dev.azure.com', token: 'pat', source: 'token' as const }
 const remote = { provider: 'azure-devops.azure-devops', host: 'dev.azure.com', owner: 'acme/Web Site', name: 'api' }
@@ -115,6 +115,36 @@ describe('reviews', () => {
     await provider.pulls!.review!(credential, remote, 7, { verdict: 'approve', body: '' })
     expect(requests.map((req) => req.method)).toEqual(['GET', 'PUT'])
     expect(JSON.parse(requests[1]!.body!.data)).toEqual({ vote: 10 })
+  })
+})
+
+describe('line threads', () => {
+  const comment = { id: 1, author: { uniqueName: 'ana@acme.io' }, content: 'nit', publishedDate: '2026-01-01', commentType: 'text' }
+  const threads: Thread[] = [
+    { id: 1, comments: [comment] },
+    { id: 2, comments: [comment], threadContext: { filePath: '/src/a.ts', rightFileStart: { line: 4, offset: 1 } } },
+    { id: 3, comments: [comment], threadContext: { filePath: '/src/b.ts', leftFileStart: { line: 9, offset: 1 } } },
+    { id: 4, comments: [{ ...comment, commentType: 'system' }], threadContext: { filePath: '/src/c.ts', rightFileStart: { line: 1, offset: 1 } } },
+  ]
+
+  it('keeps file threads out of the conversation and maps them to lines', () => {
+    expect(toComments(repo, 7, threads).map((entry) => entry.id)).toEqual(['1/1'])
+    expect(toThreads(repo, 7, threads).map((thread) => [thread.id, thread.path, thread.line, thread.side])).toEqual([
+      ['2', 'src/a.ts', 4, 'right'],
+      ['3', 'src/b.ts', 9, 'left'],
+    ])
+  })
+
+  it('creates a thread on a line and replies under its first comment', async () => {
+    const { provider, requests } = fake({
+      [`${API}pullRequests/7/threads/5/comments`]: { ...comment, id: 2, commentType: 1 },
+      [`${API}pullRequests/7/threads`]: { id: 5, comments: [{ ...comment, commentType: 1 }] },
+    })
+    const thread = await provider.pulls!.commentOnLine!(credential, remote, 7, { path: 'src/a.ts', line: 4, side: 'right', commitSha: 'abc', body: 'nit' })
+    expect(thread).toMatchObject({ id: '5', path: 'src/a.ts', line: 4, side: 'right', comments: [{ body: 'nit' }] })
+    expect(JSON.parse(requests[0]!.body!.data).threadContext).toEqual({ filePath: '/src/a.ts', rightFileStart: { line: 4, offset: 1 }, rightFileEnd: { line: 4, offset: 1 } })
+    expect((await provider.pulls!.reply!(credential, remote, 7, '5', 'done')).id).toBe('5/2')
+    expect(JSON.parse(requests[1]!.body!.data)).toEqual({ parentCommentId: 1, content: 'done', commentType: 1 })
   })
 })
 

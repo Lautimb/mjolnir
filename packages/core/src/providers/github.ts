@@ -5,6 +5,8 @@ import type {
   Person,
   ProviderDefinition,
   MergeMethod,
+  DiffSide,
+  LineCommentInput,
   PullRequestComment,
   PullRequestDetail,
   PullRequestMergeInput,
@@ -13,6 +15,7 @@ import type {
   PullRequestReview,
   PullRequestReviewInput,
   PullRequestSummary,
+  PullRequestThread,
   ReviewDecision,
 } from './types'
 
@@ -90,6 +93,28 @@ interface GitHubComment {
   body: string
   created_at: string
   html_url: string
+}
+
+interface GitHubReviewComment extends GitHubComment {
+  path: string
+  line: number | null
+  side: 'LEFT' | 'RIGHT'
+  in_reply_to_id?: number
+}
+
+const SIDES: Record<GitHubReviewComment['side'], DiffSide> = { LEFT: 'left', RIGHT: 'right' }
+
+export function toThreads(comments: GitHubReviewComment[]): PullRequestThread[] {
+  const threads = new Map<number, PullRequestThread>()
+  for (const entry of comments) {
+    if (entry.in_reply_to_id === undefined && entry.line !== null) {
+      threads.set(entry.id, { id: String(entry.id), path: entry.path, line: entry.line, side: SIDES[entry.side], comments: [comment(entry)] })
+    }
+  }
+  for (const entry of comments) {
+    if (entry.in_reply_to_id !== undefined) threads.get(entry.in_reply_to_id)?.comments.push(comment(entry))
+  }
+  return [...threads.values()]
 }
 
 interface GitHubCheckRuns {
@@ -263,6 +288,24 @@ export function createGitHubClient({ token, fetch = globalThis.fetch, apiUrl = '
       if (deleteBranch && pull.head.repo?.full_name === pull.base.repo.full_name) {
         await request(`${repoPath(repo)}/git/refs/heads/${pull.head.ref.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE' })
       }
+    },
+
+    async threads(repo: RemoteRepo, number: number) {
+      return toThreads(await request<GitHubReviewComment[]>(`${pullPath(repo, number)}/comments?per_page=100`))
+    },
+
+    async commentOnLine(repo: RemoteRepo, number: number, { path, line, side, commitSha, body }: LineCommentInput) {
+      const created = await request<GitHubReviewComment>(`${pullPath(repo, number)}/comments`, {
+        method: 'POST',
+        body: { body, commit_id: commitSha, path, line, side: side === 'left' ? 'LEFT' : 'RIGHT' },
+      })
+      return { id: String(created.id), path, line, side, comments: [comment(created)] }
+    },
+
+    async reply(repo: RemoteRepo, number: number, threadId: string, body: string) {
+      const root = Number(threadId)
+      if (!Number.isSafeInteger(root) || root <= 0) throw new RangeError(`Invalid thread id: ${threadId}`)
+      return comment(await request<GitHubComment>(`${pullPath(repo, number)}/comments/${root}/replies`, { method: 'POST', body: { body } }))
     },
 
     headRefspec: (number: number) => `pull/${pullNumber(number)}/head`,

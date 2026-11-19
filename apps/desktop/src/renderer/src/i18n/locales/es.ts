@@ -131,6 +131,10 @@ export const es = {
   },
   diff: {
     pickSession: 'Elegí una sesión en el panel para ver sus cambios.',
+    comments: plural({
+      one: '{count} comentario',
+      other: '{count} comentarios',
+    }),
     modes: {
       working: 'Sin commitear',
       branch: 'Toda la branch',
@@ -246,6 +250,9 @@ export const es = {
     commentPlaceholder: 'Dejá un comentario…',
     comment: 'Comentar',
     commenting: 'Enviando…',
+    threads: {
+      reply: 'Responder',
+    },
     reviewActions: {
       approve: 'Aprobar',
       requestChanges: 'Pedir cambios',
