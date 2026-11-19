@@ -348,6 +348,7 @@ export const es = {
       checking: 'Buscando actualizaciones…',
       latest: 'Tenés la última versión.',
       available: 'Hay una versión nueva ({version}). Descargala desde GitHub.',
+      blocked: 'No se pudo instalar la versión {version}; puede que el sistema haya bloqueado el instalador. Descargala desde GitHub.',
       downloading: 'Descargando {version}… {percent}%',
       ready: 'La versión {version} está lista. Se instala al reiniciar o al cerrar la app.',
       error: 'No se pudo buscar actualizaciones.',
@@ -356,6 +357,8 @@ export const es = {
       title: 'Mjolnir {version} disponible',
       ready: 'Reiniciá la app para actualizar.',
       available: 'Descargá la versión nueva desde GitHub.',
+      blockedTitle: 'No se pudo instalar Mjolnir {version}',
+      blocked: 'Descargá la versión nueva desde GitHub e instalala a mano.',
     },
   },
   plugins: {

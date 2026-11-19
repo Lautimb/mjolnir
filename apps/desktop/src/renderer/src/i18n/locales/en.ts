@@ -349,6 +349,7 @@ export const en: Messages = {
       checking: 'Checking for updates…',
       latest: "You're on the latest version.",
       available: 'A new version ({version}) is available. Download it from GitHub.',
+      blocked: "Couldn't install version {version}; the system may have blocked the installer. Download it from GitHub.",
       downloading: 'Downloading {version}… {percent}%',
       ready: 'Version {version} is ready. It installs when you restart or quit the app.',
       error: "Couldn't check for updates.",
@@ -357,6 +358,8 @@ export const en: Messages = {
       title: 'Mjolnir {version} available',
       ready: 'Restart the app to update.',
       available: 'Download the new version from GitHub.',
+      blockedTitle: "Couldn't install Mjolnir {version}",
+      blocked: 'Download the new version from GitHub and install it manually.',
     },
   },
   plugins: {

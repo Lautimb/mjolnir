@@ -1,0 +1,18 @@
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('electron', () => ({ app: { isPackaged: false } }))
+vi.mock('electron-updater', () => ({ autoUpdater: {} }))
+
+const { blockedInstall } = await import('./updater')
+
+describe('blockedInstall', () => {
+  it('reports the target version when the app restarted on the version it tried to leave', () => {
+    expect(blockedInstall({ from: '0.3.1', to: '0.3.2' }, '0.3.1')).toBe('0.3.2')
+  })
+
+  it('ignores attempts that already installed or are malformed', () => {
+    expect(blockedInstall({ from: '0.3.1', to: '0.3.2' }, '0.3.2')).toBeNull()
+    expect(blockedInstall({ from: '0.3.1' }, '0.3.1')).toBeNull()
+    expect(blockedInstall(null, '0.3.1')).toBeNull()
+  })
+})

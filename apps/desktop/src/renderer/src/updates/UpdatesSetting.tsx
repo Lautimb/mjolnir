@@ -14,7 +14,7 @@ function describe(t: T, status: UpdateStatus): string {
     case 'latest':
       return t('updates.status.latest')
     case 'available':
-      return t('updates.status.available', { version: status.version })
+      return status.blocked ? t('updates.status.blocked', { version: status.version }) : t('updates.status.available', { version: status.version })
     case 'downloading':
       return t('updates.status.downloading', { version: status.version, percent: status.percent })
     case 'ready':

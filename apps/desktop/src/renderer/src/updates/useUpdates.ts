@@ -24,6 +24,10 @@ export function useUpdates(): UpdateState | null {
     if (status?.kind !== 'ready' && status?.kind !== 'available') return
     if (notified.current === status.version) return
     notified.current = status.version
+    if (status.kind === 'available' && status.blocked) {
+      window.mjolnir.window.notify(NOTIFICATION_TAG, t('updates.notify.blockedTitle', { version: status.version }), t('updates.notify.blocked'))
+      return
+    }
     const body = status.kind === 'ready' ? t('updates.notify.ready') : t('updates.notify.available')
     window.mjolnir.window.notify(NOTIFICATION_TAG, t('updates.notify.title', { version: status.version }), body)
   }, [status, t])

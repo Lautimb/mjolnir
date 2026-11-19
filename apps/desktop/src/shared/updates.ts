@@ -3,7 +3,7 @@ export type UpdateStatus =
   | { kind: 'idle' }
   | { kind: 'checking' }
   | { kind: 'latest' }
-  | { kind: 'available'; version: string }
+  | { kind: 'available'; version: string; blocked: boolean }
   | { kind: 'downloading'; version: string; percent: number }
   | { kind: 'ready'; version: string }
   | { kind: 'error' }

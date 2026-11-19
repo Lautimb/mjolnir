@@ -124,7 +124,7 @@ void app.whenReady().then(async () => {
     },
   })
   const accounts = new Accounts(join(userData, 'accounts.json'), environment.repoHosts, plugins.providers)
-  const updater = new Updater((state) => window.send('updates:changed', state))
+  const updater = new Updater(join(userData, 'update-attempt.json'), (state) => window.send('updates:changed', state))
   await plugins.registry.init()
   servePlugins((pluginId) => plugins.registry.root(pluginId))
 
