@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { ClipboardAddon, type IClipboardProvider } from '@xterm/addon-clipboard'
 import type { Settings } from '../../../shared/settings'
 import { describeError, useI18n } from '../i18n/I18nProvider'
 import type { Tab } from './model'
@@ -24,6 +25,11 @@ const theme = {
   selectionBackground: '#3a3c47',
   black: '#1c1d23',
   brightBlack: '#5f616c',
+}
+
+const writeOnlyClipboard: IClipboardProvider = {
+  readText: () => '',
+  writeText: (_selection, text) => navigator.clipboard.writeText(text),
 }
 
 export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, onExit }: Props) {
@@ -51,6 +57,7 @@ export function TerminalView({ tab, active, cursorStyle, cursorBlink, fontSize, 
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.loadAddon(new WebLinksAddon((_event, uri) => window.open(uri)))
+    term.loadAddon(new ClipboardAddon(undefined, writeOnlyClipboard))
     term.open(container)
     fit.fit()
     termRef.current = term

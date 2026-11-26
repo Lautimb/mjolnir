@@ -19,6 +19,7 @@
     "package:dir": "electron-vite build && electron-builder --dir"
   },
   "dependencies": {
+    "@xterm/addon-clipboard": "^0.2.0",
     "electron-updater": "6.8.11",
     "node-pty": "^1.1.0"
   },
